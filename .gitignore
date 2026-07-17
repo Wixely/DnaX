@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+.vs/
+.idea/
+.vscode/
+TestResults/
+artifacts/
+*.user
+*.suo
+
+# Internal reference files, not part of the published project
+/SafeCache.cs
+/DNAX-PLAN.md

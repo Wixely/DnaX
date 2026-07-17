@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup><IsPackable>false</IsPackable></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/DnaX.Hosting/DnaX.Hosting.csproj" />
+    <ProjectReference Include="../../src/DnaX.Data/DnaX.Data.csproj" />
+    <ProjectReference Include="../../src/DnaX.Caching/DnaX.Caching.csproj" />
+    <ProjectReference Include="../../src/DnaX.Diagnostics/DnaX.Diagnostics.csproj" />
+    <ProjectReference Include="../../src/DnaX.Compatibility/DnaX.Compatibility.csproj" />
+  </ItemGroup>
+</Project>

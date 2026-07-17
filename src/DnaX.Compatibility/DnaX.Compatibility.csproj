@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>DnaX.Compatibility</PackageId>
+    <Description>Golden-tested compatibility contracts for migration from historical DNA.</Description>
+  </PropertyGroup>
+</Project>
