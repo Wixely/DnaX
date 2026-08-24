@@ -6,7 +6,7 @@ Packages are deliberately independent:
 
 - `DnaX.Hosting` resolves content and writable-data paths consistently in IIS, Windows Services, console hosts, and tests.
 - `DnaX.Data` executes closures against named, provider-neutral `DbConnection` factories without installing SQL Server, Oracle, Dapper, or EF Core.
-- `DnaX.Data.Migrations` defines explicit, checksummed migration manifests and named migration orchestration; `DnaX.Data.Migrations.Sqlite` supplies the opt-in SQLite adapter.
+- `DnaX.Data.Migrations` defines explicit, checksummed migration manifests and named migration orchestration, with opt-in adapters for SQLite, PostgreSQL, SQL Server, and Oracle.
 - `DnaX.Caching` provides single-flight `Hit`/`HitAsync`, stale-while-refresh, invalidation, null policy, and testable time.
 - `DnaX.Redis.StackExchangeRedis` is an opt-in StackExchange.Redis adapter with named closure execution.
 - `DnaX.Diagnostics` maps health and sanitized runtime endpoints onto an existing ASP.NET Core host.
@@ -46,7 +46,7 @@ ReportRow[] rows = await databases.ExecuteAsync(
 
 SQL Server, Oracle, and Dapper appear here only in application code. `DnaX.Data` does not depend on any of them.
 
-## SQLite schema manifests and migrations
+## Database schema manifests and migrations
 
 ```csharp
 builder.Services.AddDnaXDataMigrations("Primary", options =>
@@ -54,16 +54,16 @@ builder.Services.AddDnaXDataMigrations("Primary", options =>
     options.ConnectionFactory = _ => new SqliteConnection(connectionString);
     options.Manifest = ApplicationSchema.Manifest;
     options.ApplicationVersion = "1.4.0";
-    options.UseSqlite();
+    options.UseSqlite(); // Or UsePostgreSql(), UseSqlServer(), or UseOracle().
 });
 
 // Explicitly migrate before accepting traffic.
 await app.Services.MigrateDnaXDatabaseAsync("Primary");
 ```
 
-The application owns and reviews every SQL statement. DNA X owns the immutable manifest validation, checksum ledger, cross-process SQLite lock, atomic pending chain, structured diagnostics, and isolated historical-upgrade test harness. Dapper remains an application dependency and can be used normally after migration.
+The application owns and reviews every provider-specific SQL statement. DNA X owns immutable manifest validation, the checksum ledger, provider-appropriate migration locking, structured diagnostics, and explicit transaction guarantees. Dapper remains an application dependency and can be used normally after migration.
 
-See [database manifests and SQLite migrations](docs/database-migrations.md) for manifest authoring, embedded SQL, startup migration, legacy database adoption, transaction behavior, and CI verification.
+See [database manifests and migrations](docs/database-migrations.md) for provider setup, manifest authoring, startup migration, legacy database adoption, transaction behavior, and CI verification.
 
 ## Cache closures
 

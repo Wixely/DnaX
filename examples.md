@@ -7,7 +7,7 @@ only what the application needs.
 
 - [DnaX.Hosting — host-independent paths](#dnaxhosting--host-independent-paths)
 - [DnaX.Data — named database closures](#dnaxdata--named-database-closures)
-- [DnaX.Data.Migrations — SQLite schema lifecycle](#dnaxdata-migrations--sqlite-schema-lifecycle)
+- [DnaX.Data.Migrations — database schema lifecycle](#dnaxdata-migrations--database-schema-lifecycle)
 - [DnaX.Caching — single-flight cache closures](#dnaxcaching--single-flight-cache-closures)
 - [DnaX.Redis.StackExchangeRedis — named Redis closures](#dnaxredisstackexchangeredis--named-redis-closures)
 - [DnaX.Diagnostics — health and runtime endpoints](#dnaxdiagnostics--health-and-runtime-endpoints)
@@ -141,9 +141,9 @@ int count = databases.Execute(
     connection => connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Orders"));
 ```
 
-## DnaX.Data.Migrations — SQLite schema lifecycle
+## DnaX.Data.Migrations — database schema lifecycle
 
-Install `DnaX.Data.Migrations.Sqlite`; it brings the provider-neutral migration core without changing `DnaX.Data` or adding Dapper to DNA X. Declare migrations in application-owned source:
+Install the adapter for the application's database: `DnaX.Data.Migrations.Sqlite`, `.PostgreSql`, `.SqlServer`, or `.Oracle`. Each brings the provider-neutral core without changing `DnaX.Data` or adding Dapper/provider drivers to DNA X. Declare provider-specific migrations in application-owned source:
 
 ```csharp
 using DnaX.Data.Migrations;
@@ -187,7 +187,7 @@ app.Run();
 
 Set `options.MigrateOnStartup = true` for Generic Host startup migration instead. Explicit migration is usually clearer because its position before traffic is visible in `Program.cs`.
 
-The runner validates versions, stable identifiers, names, and SHA-256 checksums; holds a SQLite write lock; applies the entire pending chain transactionally; and records a migration only when the chain commits. See [the full migration guide](docs/database-migrations.md) for embedded SQL, code callbacks, testing, diagnostics, and existing-database adoption.
+Use `UsePostgreSql()`, `UseSqlServer()`, or `UseOracle()` with the corresponding adapter package. PostgreSQL and SQL Server use transaction-owned application locks and atomic chains like SQLite. Oracle uses a session-level `DBMS_LOCK` and durable per-migration checkpoints because Oracle DDL implicitly commits. See [the full migration guide](docs/database-migrations.md) for exact guarantees, embedded SQL, code callbacks, testing, diagnostics, and existing-database adoption.
 
 ## DnaX.Caching — single-flight cache closures
 

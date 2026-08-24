@@ -7,7 +7,7 @@ namespace DnaX.Data.Migrations;
 
 public delegate ValueTask DnaXMigrationOperation(
     DbConnection connection,
-    DbTransaction transaction,
+    DbTransaction? transaction,
     CancellationToken cancellationToken);
 
 public sealed class DnaXMigration
@@ -120,7 +120,7 @@ public sealed class DnaXMigration
 
     private static async ValueTask ExecuteSqlAsync(
         DbConnection connection,
-        DbTransaction transaction,
+        DbTransaction? transaction,
         string sql,
         CancellationToken cancellationToken)
     {

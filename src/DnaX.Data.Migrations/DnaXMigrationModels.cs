@@ -9,6 +9,12 @@ public enum DnaXMigrationState
     UnsupportedFuture,
 }
 
+public enum DnaXMigrationAtomicity
+{
+    AtomicChain,
+    ProviderManagedCheckpoints,
+}
+
 public sealed record DnaXAppliedMigration(
     int Version,
     string Id,
@@ -31,24 +37,26 @@ public sealed record DnaXMigrationResult(
     string DatabaseName,
     DnaXMigrationStatus Status,
     IReadOnlyList<DnaXMigration> AppliedMigrations,
-    TimeSpan Duration);
+    TimeSpan Duration,
+    DnaXMigrationAtomicity Atomicity);
 
 public sealed record DnaXBeforeMigrationContext(
     string DatabaseName,
     DnaXMigrationManifest Manifest,
     DnaXMigrationStatus Status,
     System.Data.Common.DbConnection Connection,
-    System.Data.Common.DbTransaction Transaction);
+    System.Data.Common.DbTransaction? Transaction);
 
 public sealed record DnaXBaselineVerificationContext(
     string DatabaseName,
     int ThroughVersion,
     DnaXMigrationManifest Manifest,
     System.Data.Common.DbConnection Connection,
-    System.Data.Common.DbTransaction Transaction);
+    System.Data.Common.DbTransaction? Transaction);
 
 public sealed record DnaXMigrationBaselineResult(
     string DatabaseName,
     int BaselineVersion,
     DnaXMigrationStatus Status,
-    TimeSpan Duration);
+    TimeSpan Duration,
+    DnaXMigrationAtomicity Atomicity);

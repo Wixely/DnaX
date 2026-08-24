@@ -29,6 +29,8 @@ public sealed class DnaXSqliteMigrationAdapter : IDnaXMigrationAdapter
 
     public string ProviderName => "sqlite";
 
+    public DnaXMigrationAtomicity Atomicity => DnaXMigrationAtomicity.AtomicChain;
+
     public async ValueTask InitializeConnectionAsync(
         DbConnection connection,
         CancellationToken cancellationToken)
@@ -49,7 +51,7 @@ public sealed class DnaXSqliteMigrationAdapter : IDnaXMigrationAdapter
         }
     }
 
-    public async ValueTask<DbTransaction> AcquireLockAsync(
+    public async ValueTask<IDnaXMigrationSession> AcquireSessionAsync(
         DbConnection connection,
         CancellationToken cancellationToken)
     {
@@ -72,7 +74,7 @@ public sealed class DnaXSqliteMigrationAdapter : IDnaXMigrationAdapter
                             cancellationToken).ConfigureAwait(false);
                     }
 
-                    return transaction;
+                    return new SqliteMigrationSession(transaction);
                 }
                 catch
                 {
@@ -97,7 +99,7 @@ public sealed class DnaXSqliteMigrationAdapter : IDnaXMigrationAdapter
 
     public ValueTask EnsureLedgerAsync(
         DbConnection connection,
-        DbTransaction transaction,
+        DbTransaction? transaction,
         CancellationToken cancellationToken) =>
         ExecuteAsync(
             RequireSqlite(connection),
@@ -116,7 +118,7 @@ public sealed class DnaXSqliteMigrationAdapter : IDnaXMigrationAdapter
 
     public async ValueTask<IReadOnlyList<DnaXAppliedMigration>> ReadLedgerAsync(
         DbConnection connection,
-        DbTransaction transaction,
+        DbTransaction? transaction,
         CancellationToken cancellationToken)
     {
         SqliteConnection sqlite = RequireSqlite(connection);
@@ -158,7 +160,7 @@ public sealed class DnaXSqliteMigrationAdapter : IDnaXMigrationAdapter
 
     public async ValueTask RecordAppliedAsync(
         DbConnection connection,
-        DbTransaction transaction,
+        DbTransaction? transaction,
         DnaXAppliedMigration migration,
         CancellationToken cancellationToken)
     {
@@ -265,5 +267,20 @@ public sealed class DnaXSqliteMigrationAdapter : IDnaXMigrationAdapter
         }
 
         return string.Join(' ', sql.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private sealed class SqliteMigrationSession(SqliteTransaction transaction) : IDnaXMigrationSession
+    {
+        public DbTransaction Transaction => transaction;
+
+        public ValueTask CheckpointAsync(CancellationToken cancellationToken) => ValueTask.CompletedTask;
+
+        public ValueTask CommitAsync(CancellationToken cancellationToken) =>
+            new(transaction.CommitAsync(cancellationToken));
+
+        public ValueTask RollbackAsync(CancellationToken cancellationToken) =>
+            new(transaction.RollbackAsync(cancellationToken));
+
+        public ValueTask DisposeAsync() => transaction.DisposeAsync();
     }
 }

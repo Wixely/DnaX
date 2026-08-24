@@ -5,6 +5,9 @@
     <Project Path="src/DnaX.Data.Migrations/DnaX.Data.Migrations.csproj" />
     <Project Path="src/DnaX.Data.Migrations.Sqlite/DnaX.Data.Migrations.Sqlite.csproj" />
     <Project Path="src/DnaX.Data.Migrations.Sqlite.Testing/DnaX.Data.Migrations.Sqlite.Testing.csproj" />
+    <Project Path="src/DnaX.Data.Migrations.PostgreSql/DnaX.Data.Migrations.PostgreSql.csproj" />
+    <Project Path="src/DnaX.Data.Migrations.SqlServer/DnaX.Data.Migrations.SqlServer.csproj" />
+    <Project Path="src/DnaX.Data.Migrations.Oracle/DnaX.Data.Migrations.Oracle.csproj" />
     <Project Path="src/DnaX.Caching/DnaX.Caching.csproj" />
     <Project Path="src/DnaX.Redis.StackExchangeRedis/DnaX.Redis.StackExchangeRedis.csproj" />
     <Project Path="src/DnaX.Diagnostics/DnaX.Diagnostics.csproj" />

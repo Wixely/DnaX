@@ -5,6 +5,9 @@
     <ProjectReference Include="../../src/DnaX.Data.Migrations/DnaX.Data.Migrations.csproj" />
     <ProjectReference Include="../../src/DnaX.Data.Migrations.Sqlite/DnaX.Data.Migrations.Sqlite.csproj" />
     <ProjectReference Include="../../src/DnaX.Data.Migrations.Sqlite.Testing/DnaX.Data.Migrations.Sqlite.Testing.csproj" />
+    <ProjectReference Include="../../src/DnaX.Data.Migrations.PostgreSql/DnaX.Data.Migrations.PostgreSql.csproj" />
+    <ProjectReference Include="../../src/DnaX.Data.Migrations.SqlServer/DnaX.Data.Migrations.SqlServer.csproj" />
+    <ProjectReference Include="../../src/DnaX.Data.Migrations.Oracle/DnaX.Data.Migrations.Oracle.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

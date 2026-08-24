@@ -1,15 +1,18 @@
-# Database manifests and SQLite migrations
+# Database manifests and migrations
 
 `DnaX.Data.Migrations` is a schema-lifecycle library, not an ORM. Applications own their schema, SQL, repositories, backups, and data-repair policy. The library validates and runs an explicit ordered manifest, records immutable history, and reports operational state. Applications can continue using Dapper normally; none of the migration packages depends on Dapper.
 
 ## Packages and boundaries
 
 - `DnaX.Data.Migrations` contains provider-neutral manifests, runner contracts, named DI registration, startup integration, status models, logging, and activities. It has no database-provider dependency.
-- `DnaX.Data.Migrations.Sqlite` contains the tested SQLite adapter, ledger, locking, PRAGMA policy, and deterministic schema inspection.
+- `DnaX.Data.Migrations.Sqlite` contains SQLite locking, ledger, PRAGMA policy, and deterministic schema inspection.
+- `DnaX.Data.Migrations.PostgreSql` contains PostgreSQL transaction-level advisory locking, ledger, and catalog inspection.
+- `DnaX.Data.Migrations.SqlServer` contains SQL Server transaction-owned application locking, ledger, and catalog inspection.
+- `DnaX.Data.Migrations.Oracle` contains Oracle session-level `DBMS_LOCK` coordination, durable per-migration ledger checkpoints, and catalog inspection.
 - `DnaX.Data.Migrations.Sqlite.Testing` contains temporary-database scopes and historical-chain verification. Keep it in test projects.
 - `DnaX.Data` remains unchanged and provider-neutral. An application may use it beside the migration packages, but neither requires the other.
 
-Only SQLite is supported. The adapter boundary allows separately tested providers later; the current packages make no SQL Server, PostgreSQL, MySQL, or Oracle compatibility claim.
+The adapters do not depend on a database driver. Applications install and provide their normal `DbConnection` implementation: `Microsoft.Data.Sqlite`, Npgsql, Microsoft.Data.SqlClient, or Oracle Managed Data Access. Migration SQL remains provider-specific; a SQLite manifest is not automatically portable to another SQL dialect.
 
 ## Authoring a manifest
 
@@ -74,7 +77,8 @@ DnaXMigration.Code(
     DnaXMigration.ComputeChecksum("normalize-item-codes-v1"),
     async (connection, transaction, cancellationToken) =>
     {
-        // Use DbCommand or Dapper. Every command must use the supplied transaction.
+        // Use DbCommand or Dapper. Use the supplied transaction when non-null.
+        // Oracle supplies null because DDL implicitly commits.
     })
 ```
 
@@ -106,27 +110,41 @@ await app.Services.MigrateDnaXDatabaseAsync("Primary");
 app.Run();
 ```
 
-The factory may return an open or closed `Microsoft.Data.Sqlite.SqliteConnection`; the runner opens closed connections and always disposes them. Connection strings and SQL are never logged.
+The factory may return an open or closed provider `DbConnection`; the runner opens closed connections and always disposes them. Connection strings and SQL are never logged.
+
+Choose one provider adapter:
+
+```csharp
+options.UseSqlite();
+options.UsePostgreSql(postgres => postgres.Schema = "application");
+options.UseSqlServer(sqlServer => sqlServer.Schema = "application");
+options.UseOracle(oracle => oracle.Schema = "APPLICATION");
+```
+
+These calls are alternatives, not a chain. Install the matching adapter namespace and configure one adapter per named database.
 
 For automatic Generic Host startup migration, set `options.MigrateOnStartup = true`. The hosted service completes all opted-in named databases before host startup completes. Do not also call the explicit operation unless an intentional idempotency check is wanted.
 
-## SQLite transaction and locking contract
+## Provider locking and transaction contracts
 
-For every status or migration operation the adapter:
+| Adapter | Lock | Migration atomicity | Default ledger |
+| --- | --- | --- | --- |
+| SQLite | `BEGIN IMMEDIATE` database write lock | Complete pending chain | `__DnaXMigrations` |
+| PostgreSQL | `pg_try_advisory_xact_lock` transaction lock | Complete pending chain | `public.__DnaXMigrations` |
+| SQL Server | `sys.sp_getapplock`, owned by the transaction | Complete pending chain | `dbo.__DnaXMigrations` |
+| Oracle | `DBMS_LOCK.REQUEST`, held for the session across commits | Durable checkpoint after each migration | `DNAX_MIGRATIONS` |
 
-1. opens a dedicated connection;
-2. enables foreign keys and, by default, WAL journal mode;
-3. acquires a database write lock with `BEGIN IMMEDIATE`;
-4. creates or reads `__DnaXMigrations` while holding that lock;
-5. validates the complete ledger against the manifest;
-6. applies every pending migration and ledger insert in that one transaction;
-7. commits the complete chain, or rolls the complete chain back on any failure.
+Every adapter acquires its lock before creating or reading the ledger, then re-reads history while holding the lock. A concurrent runner therefore skips work committed by the first. Lock waits honor the configured timeout and cancellation.
 
-This serializes application instances and processes sharing one SQLite database. A second runner waits and re-reads the ledger after acquiring the lock, so it skips work committed by the first. Lock retries honor the configured timeout and cancellation; an individual provider lock attempt is bounded to approximately one second before cancellation is re-observed.
+SQLite, PostgreSQL, and SQL Server apply the complete pending chain plus ledger rows in one transaction. A failure at version 5 rolls back versions 3 and 4 when all three were pending. Their result reports `DnaXMigrationAtomicity.AtomicChain`.
 
-Foreign keys are enforced. Checks are deferred until commit by default so reviewed SQLite table-rebuild migrations can copy, drop, rename, and reconnect tables atomically. A violation still prevents commit and rolls back the chain. Disable deferral only when every intermediate statement must satisfy constraints.
+SQLite additionally enables foreign keys and WAL by default. Foreign-key checks are deferred until commit so reviewed table rebuilds can copy, drop, rename, and reconnect tables atomically.
 
-Because all pending versions are atomic, a failure at version 5 also rolls back versions 3 and 4 if all three were pending. No failed version is written to the ledger. The process remembers the sanitized last failure for diagnostics until a retry succeeds; after restart the durable state is correctly pending.
+Oracle reports `DnaXMigrationAtomicity.ProviderManagedCheckpoints`. Oracle commits before and after every DDL statement, so no library can roll back a multi-DDL chain. DNA X holds a session-level `DBMS_LOCK` with `release_on_commit => FALSE`, applies one migration, records its ledger row, commits that checkpoint, then continues. If version 5 fails, successfully checkpointed versions 3 and 4 remain applied. If Oracle commits a DDL statement but the process dies before its ledger insert commits, the schema can be ahead of the ledger and requires operator review; write Oracle migrations to be safely diagnosable and retryable.
+
+The Oracle application user needs permission to execute `DBMS_LOCK`, commonly granted by an administrator with `GRANT EXECUTE ON DBMS_LOCK TO <application-user>`. Oracle SQL migrations must be a single executable SQL or PL/SQL command; use a PL/SQL block or a code-backed migration for multiple statements. The callback receives a null transaction on Oracle.
+
+No failed version is written to the ledger. The process remembers a sanitized last failure for diagnostics until a retry succeeds; after restart the durable state is pending.
 
 ## Ledger and status
 
@@ -154,7 +172,7 @@ options.BeforeMigrateAsync = async (context, cancellationToken) =>
         cancellationToken);
 ```
 
-The hook runs inside the locked transaction and aborts migration if it throws. The library intentionally does not copy a SQLite file: a filesystem copy of a live WAL database is not inherently valid. Choose and restore-test an online SQLite backup or an operational stop-and-copy procedure appropriate to the service.
+The hook runs while holding the migration lock and aborts migration if it throws. Its transaction is null for providers such as Oracle that cannot offer an atomic chain. The library intentionally does not copy database files or select a vendor backup strategy. Choose and restore-test a backup procedure appropriate to the service.
 
 ## Adopting an existing database
 
@@ -180,6 +198,8 @@ Baselining requires an application verification callback, works only with an emp
 ## Migration tests
 
 Reference `DnaX.Data.Migrations.Sqlite.Testing` only from the test project.
+
+The repository runs provider-protocol contract tests for PostgreSQL, SQL Server, and Oracle without bundling their drivers. Applications using those adapters should also run the full manifest against an isolated instance of the exact database product/version and driver they deploy. This is especially important for permissions, Oracle `DBMS_LOCK`, provider parameter binding, extensions, collations, and application-specific SQL.
 
 ### Isolated current database
 
@@ -226,5 +246,13 @@ The verifier builds a canonical fresh database, materializes every version from 
 - no inferred or automatically approved destructive changes;
 - no seed/demo data or long-running operational repair jobs;
 - no automatic history rewrite, squash, checksum acceptance, or drift repair;
-- no provider claims beyond the tested SQLite adapter;
+- no lowest-common-denominator SQL dialect or automatic SQL translation;
+- no MySQL adapter or compatibility claim;
 - no CLI, code generator, Node.js, or Python toolchain.
+
+## Provider references
+
+- [PostgreSQL advisory lock functions](https://www.postgresql.org/docs/current/functions-admin.html)
+- [SQL Server `sys.sp_getapplock`](https://learn.microsoft.com/sql/relational-databases/system-stored-procedures/sp-getapplock-transact-sql)
+- [Oracle `DBMS_LOCK`](https://docs.oracle.com/en/database/oracle/oracle-database/19/arpls/DBMS_LOCK.html)
+- [Oracle DDL implicit commit behavior](https://docs.oracle.com/en/database/oracle/oracle-database/23/tdddg/dml-and-transactions.html)

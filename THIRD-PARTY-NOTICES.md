@@ -25,7 +25,7 @@ following third-party packages, each under its own license:
 - **Microsoft.NET.Test.Sdk** — MIT License, © Microsoft Corporation.
   <https://github.com/microsoft/vstest>
 
-Applications that use `DnaX.Data` supply their own ADO.NET provider
-(for example Microsoft.Data.SqlClient or Oracle.ManagedDataAccess.Core);
-those providers retain their respective licenses and are never
-redistributed by DNA X.
+Applications that use `DnaX.Data` or a provider-specific migration adapter
+supply their own ADO.NET provider (for example Npgsql, Microsoft.Data.SqlClient,
+or Oracle.ManagedDataAccess.Core); those providers retain their respective
+licenses and are never redistributed by DNA X.

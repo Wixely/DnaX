@@ -28,6 +28,15 @@ $allowed = @{
         "DnaX.Data.Migrations.Sqlite",
         "Microsoft.Extensions.DependencyInjection"
     )
+    "DnaX.Data.Migrations.PostgreSql" = @(
+        "DnaX.Data.Migrations"
+    )
+    "DnaX.Data.Migrations.SqlServer" = @(
+        "DnaX.Data.Migrations"
+    )
+    "DnaX.Data.Migrations.Oracle" = @(
+        "DnaX.Data.Migrations"
+    )
     "DnaX.Hosting" = @(
         "Microsoft.Extensions.DependencyInjection.Abstractions",
         "Microsoft.Extensions.FileProviders.Abstractions",

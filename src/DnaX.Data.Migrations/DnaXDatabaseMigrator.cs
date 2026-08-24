@@ -43,15 +43,15 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
         await using DbConnection connection = CreateConnection(registration);
         await OpenAsync(connection, cancellationToken).ConfigureAwait(false);
         await registration.Adapter.InitializeConnectionAsync(connection, cancellationToken).ConfigureAwait(false);
-        await using DbTransaction transaction = await registration.Adapter
-            .AcquireLockAsync(connection, cancellationToken)
+        await using IDnaXMigrationSession session = await registration.Adapter
+            .AcquireSessionAsync(connection, cancellationToken)
             .ConfigureAwait(false);
 
         try
         {
-            await registration.Adapter.EnsureLedgerAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+            await registration.Adapter.EnsureLedgerAsync(connection, session.Transaction, cancellationToken).ConfigureAwait(false);
             IReadOnlyList<DnaXAppliedMigration> applied = await registration.Adapter
-                .ReadLedgerAsync(connection, transaction, cancellationToken)
+                .ReadLedgerAsync(connection, session.Transaction, cancellationToken)
                 .ConfigureAwait(false);
             DnaXMigrationStatus status = Evaluate(registration.Manifest, applied);
             if (status.State == DnaXMigrationState.Pending && _failures.TryGetValue(name, out string? failure))
@@ -62,12 +62,12 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
                     Issues = status.Issues.Concat([failure]).ToArray(),
                 };
             }
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            await session.CommitAsync(cancellationToken).ConfigureAwait(false);
             return status;
         }
         catch
         {
-            await TryRollbackAsync(transaction, name, _logger).ConfigureAwait(false);
+            await TryRollbackAsync(session, name, _logger).ConfigureAwait(false);
             throw;
         }
     }
@@ -82,21 +82,22 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
         activity?.SetTag("db.system", registration.Adapter.ProviderName);
         activity?.SetTag("dnax.database.name", registration.Name);
         activity?.SetTag("dnax.schema.target_version", registration.Manifest.CurrentVersion);
+        activity?.SetTag("dnax.migration.atomicity", registration.Adapter.Atomicity.ToString());
 
         await using DbConnection connection = CreateConnection(registration);
         await OpenAsync(connection, cancellationToken).ConfigureAwait(false);
         await registration.Adapter.InitializeConnectionAsync(connection, cancellationToken).ConfigureAwait(false);
-        await using DbTransaction transaction = await registration.Adapter
-            .AcquireLockAsync(connection, cancellationToken)
+        await using IDnaXMigrationSession session = await registration.Adapter
+            .AcquireSessionAsync(connection, cancellationToken)
             .ConfigureAwait(false);
 
         DnaXMigration? activeMigration = null;
         List<DnaXMigration> appliedMigrations = [];
         try
         {
-            await registration.Adapter.EnsureLedgerAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+            await registration.Adapter.EnsureLedgerAsync(connection, session.Transaction, cancellationToken).ConfigureAwait(false);
             IReadOnlyList<DnaXAppliedMigration> applied = await registration.Adapter
-                .ReadLedgerAsync(connection, transaction, cancellationToken)
+                .ReadLedgerAsync(connection, session.Transaction, cancellationToken)
                 .ConfigureAwait(false);
             DnaXMigrationStatus status = Evaluate(registration.Manifest, applied);
 
@@ -108,20 +109,32 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
 
             if (status.PendingMigrations.Count == 0)
             {
-                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                await session.CommitAsync(cancellationToken).ConfigureAwait(false);
                 _failures.TryRemove(name, out _);
                 _logger.LogDebug(
                     "Database {DatabaseName} is already at schema version {SchemaVersion}.",
                     name,
                     status.CurrentVersion);
-                return new(name, status, appliedMigrations.AsReadOnly(), Stopwatch.GetElapsedTime(started));
+                return new(
+                    name,
+                    status,
+                    appliedMigrations.AsReadOnly(),
+                    Stopwatch.GetElapsedTime(started),
+                    registration.Adapter.Atomicity);
             }
 
             if (registration.BeforeMigrateAsync is not null)
             {
                 await registration.BeforeMigrateAsync(
-                    new(name, registration.Manifest, status, connection, transaction),
+                    new(name, registration.Manifest, status, connection, session.Transaction),
                     cancellationToken).ConfigureAwait(false);
+            }
+
+            if (registration.Adapter.Atomicity == DnaXMigrationAtomicity.ProviderManagedCheckpoints)
+            {
+                _logger.LogWarning(
+                    "Database {DatabaseName} uses provider-managed migration checkpoints; the complete pending chain is not atomic.",
+                    name);
             }
 
             foreach (DnaXMigration migration in status.PendingMigrations)
@@ -134,11 +147,11 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
                     migration.Name,
                     name);
 
-                await migration.Operation(connection, transaction, cancellationToken).ConfigureAwait(false);
+                await migration.Operation(connection, session.Transaction, cancellationToken).ConfigureAwait(false);
                 DateTimeOffset appliedAt = registration.TimeProvider.GetUtcNow();
                 await registration.Adapter.RecordAppliedAsync(
                     connection,
-                    transaction,
+                    session.Transaction,
                     new(
                         migration.Version,
                         migration.Id,
@@ -147,10 +160,11 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
                         registration.ApplicationVersion,
                         appliedAt),
                     cancellationToken).ConfigureAwait(false);
+                await session.CheckpointAsync(cancellationToken).ConfigureAwait(false);
                 appliedMigrations.Add(migration);
             }
 
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            await session.CommitAsync(cancellationToken).ConfigureAwait(false);
             _failures.TryRemove(name, out _);
             DnaXMigrationStatus finalStatus = new(
                 DnaXMigrationState.Current,
@@ -164,23 +178,28 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
                 name,
                 finalStatus.CurrentVersion,
                 appliedMigrations.Count);
-            return new(name, finalStatus, appliedMigrations.AsReadOnly(), Stopwatch.GetElapsedTime(started));
+            return new(
+                name,
+                finalStatus,
+                appliedMigrations.AsReadOnly(),
+                Stopwatch.GetElapsedTime(started),
+                registration.Adapter.Atomicity);
         }
         catch (DnaXMigrationValidationException)
         {
-            await TryRollbackAsync(transaction, name, _logger).ConfigureAwait(false);
+            await TryRollbackAsync(session, name, _logger).ConfigureAwait(false);
             throw;
         }
         catch (OperationCanceledException)
         {
             activity?.SetStatus(ActivityStatusCode.Error, "Cancelled");
-            await TryRollbackAsync(transaction, name, _logger).ConfigureAwait(false);
+            await TryRollbackAsync(session, name, _logger).ConfigureAwait(false);
             throw;
         }
         catch (Exception exception)
         {
             activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().FullName);
-            await TryRollbackAsync(transaction, name, _logger).ConfigureAwait(false);
+            await TryRollbackAsync(session, name, _logger).ConfigureAwait(false);
             _logger.LogError(
                 exception,
                 "Database migration failed for {DatabaseName} at migration version {MigrationVersion} ({MigrationId}).",
@@ -223,15 +242,15 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
         await using DbConnection connection = CreateConnection(registration);
         await OpenAsync(connection, cancellationToken).ConfigureAwait(false);
         await registration.Adapter.InitializeConnectionAsync(connection, cancellationToken).ConfigureAwait(false);
-        await using DbTransaction transaction = await registration.Adapter
-            .AcquireLockAsync(connection, cancellationToken)
+        await using IDnaXMigrationSession session = await registration.Adapter
+            .AcquireSessionAsync(connection, cancellationToken)
             .ConfigureAwait(false);
 
         try
         {
-            await registration.Adapter.EnsureLedgerAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+            await registration.Adapter.EnsureLedgerAsync(connection, session.Transaction, cancellationToken).ConfigureAwait(false);
             IReadOnlyList<DnaXAppliedMigration> existing = await registration.Adapter
-                .ReadLedgerAsync(connection, transaction, cancellationToken)
+                .ReadLedgerAsync(connection, session.Transaction, cancellationToken)
                 .ConfigureAwait(false);
             if (existing.Count != 0)
             {
@@ -241,7 +260,7 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
             }
 
             await verifyExistingSchema(
-                new(name, throughVersion, registration.Manifest, connection, transaction),
+                new(name, throughVersion, registration.Manifest, connection, session.Transaction),
                 cancellationToken).ConfigureAwait(false);
 
             DateTimeOffset appliedAt = registration.TimeProvider.GetUtcNow();
@@ -249,7 +268,7 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
             {
                 await registration.Adapter.RecordAppliedAsync(
                     connection,
-                    transaction,
+                    session.Transaction,
                     new(
                         migration.Version,
                         migration.Id,
@@ -260,7 +279,7 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
                     cancellationToken).ConfigureAwait(false);
             }
 
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            await session.CommitAsync(cancellationToken).ConfigureAwait(false);
             _failures.TryRemove(name, out _);
             DnaXMigration[] pending = registration.Manifest.Migrations.Skip(throughVersion).ToArray();
             DnaXMigrationStatus status = new(
@@ -273,17 +292,22 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
                 "Baselined existing database {DatabaseName} through schema version {SchemaVersion} after application verification.",
                 name,
                 throughVersion);
-            return new(name, throughVersion, status, Stopwatch.GetElapsedTime(started));
+            return new(
+                name,
+                throughVersion,
+                status,
+                Stopwatch.GetElapsedTime(started),
+                registration.Adapter.Atomicity);
         }
         catch (OperationCanceledException)
         {
-            await TryRollbackAsync(transaction, name, _logger).ConfigureAwait(false);
+            await TryRollbackAsync(session, name, _logger).ConfigureAwait(false);
             throw;
         }
         catch (Exception exception)
         {
             activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().FullName);
-            await TryRollbackAsync(transaction, name, _logger).ConfigureAwait(false);
+            await TryRollbackAsync(session, name, _logger).ConfigureAwait(false);
             if (exception is DnaXMigrationException)
             {
                 throw;
@@ -400,13 +424,13 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
     }
 
     private static async ValueTask TryRollbackAsync(
-        DbTransaction transaction,
+        IDnaXMigrationSession session,
         string databaseName,
         ILogger logger)
     {
         try
         {
-            await transaction.RollbackAsync(CancellationToken.None).ConfigureAwait(false);
+            await session.RollbackAsync(CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception rollbackException)
         {

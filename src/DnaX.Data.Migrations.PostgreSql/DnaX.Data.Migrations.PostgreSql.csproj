@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>DnaX.Data.Migrations.PostgreSql</PackageId>
+    <Description>PostgreSQL advisory locking, migration ledger, and schema inspection for DnaX.Data.Migrations.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DnaX.Data.Migrations/DnaX.Data.Migrations.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../docs/database-migrations.md" Pack="true" PackagePath="docs/" />
+  </ItemGroup>
+</Project>
