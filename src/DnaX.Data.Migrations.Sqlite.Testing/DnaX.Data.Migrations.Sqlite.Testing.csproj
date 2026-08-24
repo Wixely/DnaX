@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>DnaX.Data.Migrations.Sqlite.Testing</PackageId>
+    <Description>Isolated SQLite migration scopes and historical-chain verification for DnaX.Data.Migrations.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DnaX.Data.Migrations/DnaX.Data.Migrations.csproj" />
+    <ProjectReference Include="../DnaX.Data.Migrations.Sqlite/DnaX.Data.Migrations.Sqlite.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../docs/database-migrations.md" Pack="true" PackagePath="docs/" />
+  </ItemGroup>
+</Project>

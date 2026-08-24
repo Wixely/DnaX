@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>DnaX.Data.Migrations.Sqlite</PackageId>
+    <Description>SQLite migration locking, ledger, and schema inspection for DnaX.Data.Migrations.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DnaX.Data.Migrations/DnaX.Data.Migrations.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../docs/database-migrations.md" Pack="true" PackagePath="docs/" />
+  </ItemGroup>
+</Project>

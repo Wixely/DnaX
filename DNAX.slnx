@@ -2,6 +2,9 @@
   <Folder Name="/src/">
     <Project Path="src/DnaX.Hosting/DnaX.Hosting.csproj" />
     <Project Path="src/DnaX.Data/DnaX.Data.csproj" />
+    <Project Path="src/DnaX.Data.Migrations/DnaX.Data.Migrations.csproj" />
+    <Project Path="src/DnaX.Data.Migrations.Sqlite/DnaX.Data.Migrations.Sqlite.csproj" />
+    <Project Path="src/DnaX.Data.Migrations.Sqlite.Testing/DnaX.Data.Migrations.Sqlite.Testing.csproj" />
     <Project Path="src/DnaX.Caching/DnaX.Caching.csproj" />
     <Project Path="src/DnaX.Redis.StackExchangeRedis/DnaX.Redis.StackExchangeRedis.csproj" />
     <Project Path="src/DnaX.Diagnostics/DnaX.Diagnostics.csproj" />
@@ -10,6 +13,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/DnaX.Hosting.Tests/DnaX.Hosting.Tests.csproj" />
     <Project Path="tests/DnaX.Data.Tests/DnaX.Data.Tests.csproj" />
+    <Project Path="tests/DnaX.Data.Migrations.Tests/DnaX.Data.Migrations.Tests.csproj" />
     <Project Path="tests/DnaX.Caching.Tests/DnaX.Caching.Tests.csproj" />
     <Project Path="tests/DnaX.Redis.StackExchangeRedis.Tests/DnaX.Redis.StackExchangeRedis.Tests.csproj" />
     <Project Path="tests/DnaX.Diagnostics.Tests/DnaX.Diagnostics.Tests.csproj" />

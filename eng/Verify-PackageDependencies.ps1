@@ -14,6 +14,20 @@ $allowed = @{
         "Microsoft.Extensions.DependencyInjection.Abstractions",
         "Microsoft.Extensions.Logging.Abstractions"
     )
+    "DnaX.Data.Migrations" = @(
+        "Microsoft.Extensions.DependencyInjection.Abstractions",
+        "Microsoft.Extensions.Hosting.Abstractions",
+        "Microsoft.Extensions.Logging.Abstractions"
+    )
+    "DnaX.Data.Migrations.Sqlite" = @(
+        "DnaX.Data.Migrations",
+        "Microsoft.Data.Sqlite"
+    )
+    "DnaX.Data.Migrations.Sqlite.Testing" = @(
+        "DnaX.Data.Migrations",
+        "DnaX.Data.Migrations.Sqlite",
+        "Microsoft.Extensions.DependencyInjection"
+    )
     "DnaX.Hosting" = @(
         "Microsoft.Extensions.DependencyInjection.Abstractions",
         "Microsoft.Extensions.FileProviders.Abstractions",

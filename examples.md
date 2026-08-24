@@ -7,6 +7,7 @@ only what the application needs.
 
 - [DnaX.Hosting — host-independent paths](#dnaxhosting--host-independent-paths)
 - [DnaX.Data — named database closures](#dnaxdata--named-database-closures)
+- [DnaX.Data.Migrations — SQLite schema lifecycle](#dnaxdata-migrations--sqlite-schema-lifecycle)
 - [DnaX.Caching — single-flight cache closures](#dnaxcaching--single-flight-cache-closures)
 - [DnaX.Redis.StackExchangeRedis — named Redis closures](#dnaxredisstackexchangeredis--named-redis-closures)
 - [DnaX.Diagnostics — health and runtime endpoints](#dnaxdiagnostics--health-and-runtime-endpoints)
@@ -139,6 +140,54 @@ int count = databases.Execute(
     "Primary",
     connection => connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Orders"));
 ```
+
+## DnaX.Data.Migrations — SQLite schema lifecycle
+
+Install `DnaX.Data.Migrations.Sqlite`; it brings the provider-neutral migration core without changing `DnaX.Data` or adding Dapper to DNA X. Declare migrations in application-owned source:
+
+```csharp
+using DnaX.Data.Migrations;
+using DnaX.Data.Migrations.Sqlite;
+using Microsoft.Data.Sqlite;
+
+public static class ApplicationSchema
+{
+    public static DnaXMigrationManifest Manifest { get; } = new(
+        currentVersion: 2,
+        migrations:
+        [
+            DnaXMigration.Sql(1, "create-items", "Create items", """
+                CREATE TABLE Items (
+                    Id INTEGER NOT NULL PRIMARY KEY,
+                    Name TEXT NOT NULL
+                );
+                """),
+            DnaXMigration.Sql(2, "index-item-names", "Index item names", """
+                CREATE UNIQUE INDEX UX_Items_Name ON Items(Name);
+                """)
+        ]);
+}
+```
+
+Register the named database and migrate explicitly before serving requests:
+
+```csharp
+builder.Services.AddDnaXDataMigrations("Primary", options =>
+{
+    options.ConnectionFactory = _ => new SqliteConnection(connectionString);
+    options.Manifest = ApplicationSchema.Manifest;
+    options.ApplicationVersion = "1.0.0";
+    options.UseSqlite();
+});
+
+WebApplication app = builder.Build();
+await app.Services.MigrateDnaXDatabaseAsync("Primary");
+app.Run();
+```
+
+Set `options.MigrateOnStartup = true` for Generic Host startup migration instead. Explicit migration is usually clearer because its position before traffic is visible in `Program.cs`.
+
+The runner validates versions, stable identifiers, names, and SHA-256 checksums; holds a SQLite write lock; applies the entire pending chain transactionally; and records a migration only when the chain commits. See [the full migration guide](docs/database-migrations.md) for embedded SQL, code callbacks, testing, diagnostics, and existing-database adoption.
 
 ## DnaX.Caching — single-flight cache closures
 

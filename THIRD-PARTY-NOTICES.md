@@ -9,8 +9,11 @@ following third-party packages, each under its own license:
   **Microsoft.Extensions.FileProviders.Abstractions**,
   **Microsoft.Extensions.Hosting.Abstractions**,
   **Microsoft.Extensions.Logging.Abstractions**,
-  **Microsoft.Extensions.Options** — MIT License,
+  **Microsoft.Extensions.Options**, **Microsoft.Extensions.DependencyInjection**,
+  and **Microsoft.Data.Sqlite** — MIT License,
   © Microsoft Corporation. <https://github.com/dotnet/runtime>
+- **SQLite** (used by the opt-in `DnaX.Data.Migrations.Sqlite` package) —
+  public domain. <https://www.sqlite.org/copyright.html>
 - **StackExchange.Redis** (used only by `DnaX.Redis.StackExchangeRedis`) —
   MIT License, © Stack Exchange, Inc.
   <https://github.com/StackExchange/StackExchange.Redis>
