@@ -10,9 +10,13 @@ Packages are deliberately independent:
 - `DnaX.Caching` provides single-flight `Hit`/`HitAsync`, stale-while-refresh, invalidation, null policy, and testable time.
 - `DnaX.Redis.StackExchangeRedis` is an opt-in StackExchange.Redis adapter with named closure execution.
 - `DnaX.Diagnostics` maps health and sanitized runtime endpoints onto an existing ASP.NET Core host.
+- `DnaX.RemoteAccess` adds deliberately enabled, deployment-bound API access with rotatable credentials and endpoints, limits, safe diagnostics, and redacted auditing.
+- `DnaX.RemoteAccess.Sqlite` persists remote-access state and bounded audit events using an explicit `DnaX.Data.Migrations` manifest.
+- `DnaX.RemoteAccess.Mcp` hosts application-provided tools over authenticated, stateless Streamable HTTP using the official MCP SDK.
 - `DnaX.Compatibility` contains only golden-tested legacy contracts.
 
-See [examples.md](examples.md) for worked examples of every package.
+See [examples.md](examples.md) for worked examples and
+[`DnaX.Sample.Web`](samples/DnaX.Sample.Web/Program.cs) for composed hosting.
 
 ## Host-independent files
 
@@ -97,6 +101,54 @@ RedisValue value = await redis.ExecuteAsync(
 ```
 
 The named multiplexer is created once and disposed with the host.
+
+## Opt-in remote API and MCP access
+
+Remote access is unavailable by default. A consuming application must register the packages and its own API operations or MCP tools, enable the deployment policy, create credentials, and activate each surface through `IDnaXRemoteAccessAdministration` before a route will accept requests.
+
+```csharp
+builder.Services.AddDnaXRemoteAccess(options =>
+{
+    options.Enabled = true;
+    options.DeploymentId = "my-service-production";
+
+    options.Api.Available = true;
+    options.Api.AllowRuntimeActivation = true;
+    options.Api.AllowCredentialRotation = true;
+    options.Api.AllowEndpointRotation = true;
+
+    options.Mcp.Available = true;
+    options.Mcp.AllowRuntimeActivation = true;
+    options.Mcp.AllowCredentialRotation = true;
+    options.Mcp.AllowEndpointRotation = true;
+});
+
+builder.Services.AddDnaXRemoteAccessSqlite(
+    "RemoteAccess",
+    _ => new SqliteConnection(remoteAccessConnectionString));
+
+builder.Services.AddDnaXRemoteMcp()
+    .WithTools<ApplicationMcpTools>();
+
+WebApplication app = builder.Build();
+await app.Services.MigrateDnaXDatabaseAsync("RemoteAccess");
+
+app.UseDnaXRemoteAccess();
+app.UseRouting();
+
+app.MapDnaXRemoteApi()
+    .MapGet(
+        "/status",
+        async (ApplicationOperations operations, CancellationToken cancellationToken) =>
+            await operations.GetStatusAsync(cancellationToken))
+    .WithDnaXRemoteAction("application.get_status");
+
+app.MapDnaXRemoteMcp();
+```
+
+API and MCP policy is independent. Randomized endpoints are the default, but remain defense in depth rather than authentication. API credentials are always required; anonymous MCP additionally requires explicit deployment and administrator opt-in. Tokens are returned only when created or rotated, while SQLite stores a versioned hash, identifying suffix, lifecycle metadata, protected route state, and metadata-only audit events. A deployment identifier prevents restored state from silently activating on another deployment.
+
+Applications continue to own DTOs, operations, scopes, authorization policy, tool definitions, confirmation rules, and risk-specific validation. The packages do not expose databases, configuration, files, SQL, or shell access automatically.
 
 ## Diagnostics
 
