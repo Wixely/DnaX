@@ -10,6 +10,17 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $allowed = @{
     "DnaX.Compatibility" = @()
     "DnaX.Diagnostics" = @()
+    "DnaX.RemoteAccess" = @()
+    "DnaX.RemoteAccess.Sqlite" = @(
+        "DnaX.Data.Migrations",
+        "DnaX.Data.Migrations.Sqlite",
+        "DnaX.RemoteAccess",
+        "Microsoft.Data.Sqlite"
+    )
+    "DnaX.RemoteAccess.Mcp" = @(
+        "DnaX.RemoteAccess",
+        "ModelContextProtocol.AspNetCore"
+    )
     "DnaX.Data" = @(
         "Microsoft.Extensions.DependencyInjection.Abstractions",
         "Microsoft.Extensions.Logging.Abstractions"

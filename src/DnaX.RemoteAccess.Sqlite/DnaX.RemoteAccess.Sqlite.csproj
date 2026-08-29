@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>DnaX.RemoteAccess.Sqlite</PackageId>
+    <Description>SQLite persistence, migrations, optimistic concurrency, and bounded audit retention for DnaX.RemoteAccess.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DnaX.RemoteAccess/DnaX.RemoteAccess.csproj" />
+    <ProjectReference Include="../DnaX.Data.Migrations/DnaX.Data.Migrations.csproj" />
+    <ProjectReference Include="../DnaX.Data.Migrations.Sqlite/DnaX.Data.Migrations.Sqlite.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+  </ItemGroup>
+</Project>

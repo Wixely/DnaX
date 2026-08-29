@@ -1,5 +1,7 @@
 namespace DnaX.Diagnostics;
 
+using System.Text.Json.Serialization;
+
 public sealed record DnaXLiveResponse(string Status);
 
 public sealed record DnaXHealthResponse(
@@ -29,3 +31,8 @@ public sealed record DnaXThreadPoolInfo(
     int MaximumIo,
     int MinimumWorkers,
     int MinimumIo);
+
+[JsonSerializable(typeof(DnaXHealthResponse))]
+internal sealed partial class DnaXDiagnosticsJsonContext : JsonSerializerContext
+{
+}

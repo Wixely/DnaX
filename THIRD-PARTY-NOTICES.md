@@ -18,12 +18,19 @@ following third-party packages, each under its own license:
   MIT License, © Stack Exchange, Inc.
   <https://github.com/StackExchange/StackExchange.Redis>
 
+- **ModelContextProtocol.AspNetCore** and its Model Context Protocol SDK
+  dependencies (used only by `DnaX.RemoteAccess.Mcp`) - Apache License 2.0.
+  <https://github.com/modelcontextprotocol/csharp-sdk>
+
 ## Test-only dependencies
 
 - **xunit**, **xunit.runner.visualstudio** — Apache License 2.0.
   <https://github.com/xunit/xunit>
 - **Microsoft.NET.Test.Sdk** — MIT License, © Microsoft Corporation.
   <https://github.com/microsoft/vstest>
+
+- **Microsoft.AspNetCore.TestHost** - MIT License, Microsoft Corporation.
+  <https://github.com/dotnet/aspnetcore>
 
 Applications that use `DnaX.Data` or a provider-specific migration adapter
 supply their own ADO.NET provider (for example Npgsql, Microsoft.Data.SqlClient,

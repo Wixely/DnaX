@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>DnaX.RemoteAccess</PackageId>
+    <Description>Deployment-gated API remote access, rotatable credentials and routes, and redacted auditing for ASP.NET Core 10.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+</Project>

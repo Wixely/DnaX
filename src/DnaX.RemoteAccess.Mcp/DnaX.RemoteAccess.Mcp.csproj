@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>DnaX.RemoteAccess.Mcp</PackageId>
+    <Description>Stateless Streamable HTTP MCP hosting protected by DnaX.RemoteAccess.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DnaX.RemoteAccess/DnaX.RemoteAccess.csproj" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+  </ItemGroup>
+</Project>

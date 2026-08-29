@@ -11,6 +11,9 @@
     <Project Path="src/DnaX.Caching/DnaX.Caching.csproj" />
     <Project Path="src/DnaX.Redis.StackExchangeRedis/DnaX.Redis.StackExchangeRedis.csproj" />
     <Project Path="src/DnaX.Diagnostics/DnaX.Diagnostics.csproj" />
+    <Project Path="src/DnaX.RemoteAccess/DnaX.RemoteAccess.csproj" />
+    <Project Path="src/DnaX.RemoteAccess.Sqlite/DnaX.RemoteAccess.Sqlite.csproj" />
+    <Project Path="src/DnaX.RemoteAccess.Mcp/DnaX.RemoteAccess.Mcp.csproj" />
     <Project Path="src/DnaX.Compatibility/DnaX.Compatibility.csproj" />
   </Folder>
   <Folder Name="/tests/">
@@ -20,6 +23,7 @@
     <Project Path="tests/DnaX.Caching.Tests/DnaX.Caching.Tests.csproj" />
     <Project Path="tests/DnaX.Redis.StackExchangeRedis.Tests/DnaX.Redis.StackExchangeRedis.Tests.csproj" />
     <Project Path="tests/DnaX.Diagnostics.Tests/DnaX.Diagnostics.Tests.csproj" />
+    <Project Path="tests/DnaX.RemoteAccess.Tests/DnaX.RemoteAccess.Tests.csproj" />
     <Project Path="tests/DnaX.Compatibility.Tests/DnaX.Compatibility.Tests.csproj" />
   </Folder>
   <Folder Name="/samples/">

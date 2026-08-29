@@ -3,6 +3,9 @@ using DnaX.Data.Migrations;
 using DnaX.Data.Migrations.Sqlite;
 using DnaX.Diagnostics;
 using DnaX.Hosting;
+using DnaX.RemoteAccess;
+using DnaX.RemoteAccess.Mcp;
+using DnaX.RemoteAccess.Sqlite;
 using Microsoft.Data.Sqlite;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -38,9 +41,22 @@ builder.Services.AddDnaXDiagnostics(options =>
     // Demo only. Production diagnostics should keep authorization enabled.
     options.RequireAuthorization = false;
 });
+builder.Services.AddSingleton<SampleRemoteOperation>();
+builder.Services.AddDnaXRemoteAccess(builder.Configuration.GetSection("DnaX:RemoteAccess"));
+builder.Services.AddDnaXRemoteAccessSqlite("RemoteAccess", services =>
+{
+    string databasePath = services.GetRequiredService<IDnaXPaths>().ResolveWritable("remote-access.db");
+    Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+    return new SqliteConnection($"Data Source={databasePath}");
+});
+builder.Services.AddDnaXRemoteMcp().WithTools<SampleRemoteTools>();
 
 WebApplication app = builder.Build();
 await app.Services.MigrateDnaXDatabaseAsync("Sample");
+await app.Services.MigrateDnaXDatabaseAsync("RemoteAccess");
+
+app.UseDnaXRemoteAccess();
+app.UseRouting();
 
 app.MapGet("/", async (IDnaXCache cache, IDnaXPaths paths, CancellationToken cancellationToken) =>
 {
@@ -49,11 +65,16 @@ app.MapGet("/", async (IDnaXCache cache, IDnaXPaths paths, CancellationToken can
         _ => new ValueTask<string>("DNA X is running"),
         cancellationToken: cancellationToken);
 
-    return new { message, paths.ContentRoot, paths.WritableDataRoot };
+    return new SampleRootResponse(message, paths.ContentRoot, paths.WritableDataRoot);
 });
 
 app.MapGet("/_sample/schema", async (IDnaXDatabaseMigrator migrator, CancellationToken cancellationToken) =>
     await migrator.GetStatusAsync("Sample", cancellationToken));
 
 app.MapDnaXDiagnostics();
+app.MapDnaXRemoteApi()
+    .MapGet("/status", async (SampleRemoteOperation operation, CancellationToken cancellationToken) =>
+        await operation.GetStatusAsync(cancellationToken))
+    .WithDnaXRemoteAction("sample.get_status");
+app.MapDnaXRemoteMcp();
 app.Run();

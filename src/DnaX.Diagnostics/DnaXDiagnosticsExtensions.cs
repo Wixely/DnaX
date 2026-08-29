@@ -78,7 +78,10 @@ public static class DnaXDiagnosticsExtensions
                     int statusCode = report.Status == HealthStatus.Unhealthy
                         ? StatusCodes.Status503ServiceUnavailable
                         : StatusCodes.Status200OK;
-                    return Results.Json(response, statusCode: statusCode);
+                    return Results.Json(
+                        response,
+                        DnaXDiagnosticsJsonContext.Default.DnaXHealthResponse,
+                        statusCode: statusCode);
                 })
             .WithName("DnaXReadiness");
 
