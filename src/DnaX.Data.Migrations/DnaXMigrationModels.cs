@@ -23,6 +23,16 @@ public sealed record DnaXAppliedMigration(
     string? ApplicationVersion,
     DateTimeOffset AppliedAtUtc);
 
+/// <summary>
+/// A migration whose recorded ledger checksum does not identify the manifest's content, reported
+/// so that drift can be inspected rather than only observed as <see cref="DnaXMigrationState.Drifted"/>.
+/// </summary>
+public sealed record DnaXChecksumDrift(
+    int Version,
+    string Id,
+    string ExpectedChecksum,
+    string RecordedChecksum);
+
 public sealed record DnaXMigrationStatus(
     DnaXMigrationState State,
     int CurrentVersion,
@@ -31,6 +41,12 @@ public sealed record DnaXMigrationStatus(
     IReadOnlyList<string> Issues)
 {
     public bool CanMigrate => State is DnaXMigrationState.Current or DnaXMigrationState.Pending;
+
+    /// <summary>
+    /// Checksum mismatches behind any <see cref="DnaXMigrationState.Drifted"/> state, with the
+    /// expected and recorded values for each. Empty when no checksum drifted.
+    /// </summary>
+    public IReadOnlyList<DnaXChecksumDrift> ChecksumDrifts { get; init; } = [];
 }
 
 public sealed record DnaXMigrationResult(

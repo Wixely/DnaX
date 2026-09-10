@@ -54,6 +54,7 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
                 .ReadLedgerAsync(connection, session.Transaction, cancellationToken)
                 .ConfigureAwait(false);
             DnaXMigrationStatus status = Evaluate(registration.Manifest, applied);
+            LogLegacyChecksumAcceptance(name, registration.Manifest, applied);
             if (status.State == DnaXMigrationState.Pending && _failures.TryGetValue(name, out string? failure))
             {
                 status = status with
@@ -100,6 +101,7 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
                 .ReadLedgerAsync(connection, session.Transaction, cancellationToken)
                 .ConfigureAwait(false);
             DnaXMigrationStatus status = Evaluate(registration.Manifest, applied);
+            LogLegacyChecksumAcceptance(name, registration.Manifest, applied);
 
             if (!status.CanMigrate)
             {
@@ -325,6 +327,7 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
         IReadOnlyList<DnaXAppliedMigration> applied)
     {
         List<string> issues = [];
+        List<DnaXChecksumDrift> drifts = [];
         HashSet<int> versions = [];
         HashSet<string> ids = new(StringComparer.Ordinal);
         int databaseVersion = applied.Count == 0 ? 0 : applied.Max(item => item.Version);
@@ -369,10 +372,13 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
                     $"Migration '{expected.Id}' has recorded name '{item.Name}' but the manifest declares '{expected.Name}'.");
             }
 
-            if (!string.Equals(item.Checksum, expected.Checksum, StringComparison.Ordinal))
+            if (!expected.MatchesRecordedChecksum(item.Checksum))
             {
+                drifts.Add(new(item.Version, expected.Id, expected.Checksum, item.Checksum));
                 issues.Add(
-                    $"Migration '{expected.Id}' checksum differs from the applied ledger. Applied migrations are immutable.");
+                    $"Migration '{expected.Id}' checksum differs from the applied ledger " +
+                    $"(expected {Abbreviate(expected.Checksum)}, recorded {Abbreviate(item.Checksum)}). " +
+                    "Applied migrations are immutable.");
             }
         }
 
@@ -395,7 +401,45 @@ internal sealed class DnaXDatabaseMigrator : IDnaXDatabaseMigrator
                     ? DnaXMigrationState.Pending
                     : DnaXMigrationState.Current;
 
-        return new(state, manifest.CurrentVersion, databaseVersion, pending, issues);
+        return new(state, manifest.CurrentVersion, databaseVersion, pending, issues.AsReadOnly())
+        {
+            ChecksumDrifts = drifts.AsReadOnly(),
+        };
+    }
+
+    private static string Abbreviate(string checksum) =>
+        checksum.Length <= 23 ? checksum : checksum[..23];
+
+    /// <summary>
+    /// Logs ledger rows accepted through a historical line-ending checksum variant. Without this
+    /// an operator has no signal that a ledger predates checksum normalization, and the
+    /// compatibility set could never be retired responsibly.
+    /// </summary>
+    private void LogLegacyChecksumAcceptance(
+        string name,
+        DnaXMigrationManifest manifest,
+        IReadOnlyList<DnaXAppliedMigration> applied)
+    {
+        foreach (DnaXAppliedMigration item in applied)
+        {
+            if (item.Version < 1 || item.Version > manifest.CurrentVersion)
+            {
+                continue;
+            }
+
+            DnaXMigration expected = manifest.Migrations[item.Version - 1];
+            if (!string.Equals(item.Checksum, expected.Checksum, StringComparison.Ordinal)
+                && expected.MatchesRecordedChecksum(item.Checksum))
+            {
+                _logger.LogInformation(
+                    "Migration {MigrationVersion} ('{MigrationId}') in database {DatabaseName} was recorded before "
+                        + "checksum line-ending normalization and was accepted through a compatibility variant. "
+                        + "The ledger row is left unchanged.",
+                    item.Version,
+                    expected.Id,
+                    name);
+            }
+        }
     }
 
     private DnaXMigrationRegistration GetRegistration(string name)
