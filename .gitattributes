@@ -1,0 +1,26 @@
+# Normalize text to LF in the repository so a checkout's line endings never change file content.
+# Migration checksums are computed over normalized content (see docs/database-migrations.md), but
+# pinning the blobs keeps working trees, diffs, and embedded SQL resources consistent as well.
+* text=auto
+
+*.cs text eol=lf
+*.sql text eol=lf
+*.csproj text eol=lf
+*.props text eol=lf
+*.targets text eol=lf
+*.slnx text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.gitattributes text eol=lf
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.snk binary
+*.nupkg binary
+*.snupkg binary
+*.dll binary
+*.pdb binary
+*.zip binary
