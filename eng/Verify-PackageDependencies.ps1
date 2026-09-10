@@ -21,6 +21,9 @@ $allowed = @{
         "DnaX.RemoteAccess",
         "ModelContextProtocol.AspNetCore"
     )
+    "DnaX.MCPFab.Abstractions" = @(
+        "Microsoft.Extensions.Options"
+    )
     # Build-only: ships MSBuild props/targets and a banned-API list, never an assembly.
     "DnaX.MCPFab.Build" = @()
     "DnaX.Data" = @(
