@@ -14,6 +14,7 @@
     <Project Path="src/DnaX.RemoteAccess/DnaX.RemoteAccess.csproj" />
     <Project Path="src/DnaX.RemoteAccess.Sqlite/DnaX.RemoteAccess.Sqlite.csproj" />
     <Project Path="src/DnaX.RemoteAccess.Mcp/DnaX.RemoteAccess.Mcp.csproj" />
+    <Project Path="src/DnaX.MCPFab.Build/DnaX.MCPFab.Build.csproj" />
     <Project Path="src/DnaX.Compatibility/DnaX.Compatibility.csproj" />
   </Folder>
   <Folder Name="/tests/">

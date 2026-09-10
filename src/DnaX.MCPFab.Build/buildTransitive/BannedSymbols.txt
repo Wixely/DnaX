@@ -1,0 +1,16 @@
+; MCPFab banned APIs. Each entry fails the build under an MCP server's trim policy.
+; Format: <documentation-comment-id>|<message>
+; See https://github.com/dotnet/roslyn-analyzers/blob/main/src/Microsoft.CodeAnalysis.BannedApiAnalyzers/BannedApiAnalyzers.Help.md
+
+; --- Tool registration -------------------------------------------------------
+; Assembly.GetTypes() cannot be followed by the trimmer. Trimmed, the tool classes are
+; removed and the server advertises zero tools without erroring.
+M:ModelContextProtocol.Server.McpServerBuilderExtensions.WithToolsFromAssembly(ModelContextProtocol.Server.IMcpServerBuilder,System.Reflection.Assembly,System.Text.Json.JsonSerializerOptions)|Use WithTools<T>(McpJson.SerializerOptions) instead. WithToolsFromAssembly is trim-unsafe and fails silently with zero tools.
+M:ModelContextProtocol.Server.McpServerBuilderExtensions.WithResourcesFromAssembly(ModelContextProtocol.Server.IMcpServerBuilder,System.Reflection.Assembly,System.Text.Json.JsonSerializerOptions)|Use WithResources<T>() instead. Assembly scanning is trim-unsafe and fails silently.
+M:ModelContextProtocol.Server.McpServerBuilderExtensions.WithPromptsFromAssembly(ModelContextProtocol.Server.IMcpServerBuilder,System.Reflection.Assembly,System.Text.Json.JsonSerializerOptions)|Use WithPrompts<T>() instead. Assembly scanning is trim-unsafe and fails silently.
+
+; --- Logging -----------------------------------------------------------------
+; Serilog.Settings.Configuration does Assembly.Load + MethodInfo.Invoke and resolves
+; enrichers by scanning DependencyContext.RuntimeLibraries, which is degraded under
+; PublishSingleFile. None of it is trim-annotated, so the analyzer stays silent.
+T:Serilog.Settings.Configuration.ConfigurationReaderOptions|MCPFab binds McpFabLoggingOptions and configures Serilog in code. JSON-driven sink resolution is trim-unsafe and undetectable by the trim analyzer.

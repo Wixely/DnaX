@@ -1,0 +1,51 @@
+<Project>
+
+  <!--
+    MCPFab server Directory.Build.props.
+
+    Copy this into an MCPSharp server repository root. These properties MUST live here
+    rather than in the DnaX.MCPFab.Build package: the .NET SDK reads them before NuGet
+    package props are imported, so a package that sets them has no effect at all - the
+    generated MSBuild editorconfig never receives build_property.EnableTrimAnalyzer and
+    the analyzer stays silent. DnaX.MCPFab.Build enforces that this block is present
+    (MCPFAB003 / MCPFAB004) rather than trying to substitute for it.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
+  </PropertyGroup>
+
+  <!-- Trim analysis. Set McpFabTrimPolicy to Exempt in the csproj to opt a server out. -->
+  <PropertyGroup Condition="'$(McpFabTrimPolicy)' != 'Exempt'">
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <!-- Analyzer only. IsAotCompatible stays off until a server actually publishes AOT. -->
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+
+    <!-- Interceptor-based generators; both replace reflection the trimmer cannot follow. -->
+    <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
+    <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+
+    <!--
+      Turns every anonymous-type serialization site from a runtime {} into a build-time
+      IL2026/IL3050. This is what makes the migration cost measurable up front instead
+      of discovered in production.
+    -->
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(McpFabTrimPolicy)' != 'Exempt'">
+    <!-- Enforces the banned-API list shipped by DnaX.MCPFab.Build. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
