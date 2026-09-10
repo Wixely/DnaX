@@ -40,7 +40,7 @@ public static class ApplicationSchema
 }
 ```
 
-Each migration has an integer version/order, stable case-sensitive identifier, descriptive name, operation, and SHA-256 checksum. SQL checksums cover the exact UTF-8 string, including whitespace and line endings. Once a migration has reached a database, do not rename, reorder, edit, renumber, squash, or reuse it. Add a new migration instead. The runner fails on identifier, name, checksum, gap, duplicate, and future-version inconsistencies.
+Each migration has an integer version/order, stable case-sensitive identifier, descriptive name, operation, and SHA-256 checksum. SQL checksums cover the exact UTF-8 string, including all whitespace, after Windows line endings are normalized to `\n`. See [Line-ending compatibility](#line-ending-compatibility). Once a migration has reached a database, do not rename, reorder, edit, renumber, squash, or reuse it. Add a new migration instead. The runner fails on identifier, name, checksum, gap, duplicate, and future-version inconsistencies.
 
 ### Explicit embedded SQL
 
@@ -157,7 +157,23 @@ DnaXMigrationStatus status = await migrator.GetStatusAsync("Primary", cancellati
 
 Status is `Current`, `Pending`, `Drifted`, `Failed`, or `UnsupportedFuture`. `Failed` is the most recent failed attempt in this process; `UnsupportedFuture` means the database is newer than the application. Use the API in an application-owned readiness check or administration view. Never automatically repair drift or a future database.
 
+When a checksum does not identify the manifest's content, `status.ChecksumDrifts` reports each affected migration with its expected and recorded checksum, so drift can be diagnosed rather than only observed. The issue strings carry abbreviated values; the records carry full ones.
+
 The runner emits structured `ILogger` events and activities from `DnaX.Data.Migrations`. Tags contain only provider, configured database name, target version, and applied count—not connection strings, SQL, parameters, or seed data.
+
+## Line-ending compatibility
+
+Migration content is hashed with `\r\n` normalized to `\n`. Migrations are usually authored as C# raw string literals, which preserve the source file's line endings, so without this a Windows checkout and a Linux checkout of the same commit build binaries that record different checksums for identical SQL. The ledger written by one then reads as `Drifted` to the other, and because applied migrations are immutable, the database cannot be migrated by that build at all.
+
+The runner accepts a small set of checksums per migration: the normalized value plus the line-ending variants a build could have recorded before normalization existed. The carriage-return variant is synthesized rather than observed, because a build only ever sees the one variant its own checkout produced and could otherwise never recognize a ledger written on the other platform.
+
+Only the normalized value is ever written. Existing rows are never rewritten, so a ledger predating normalization keeps its original checksum and is accepted on every subsequent run; acceptance is logged at information level. This does not weaken drift detection—matching a variant of different content would require a SHA-256 preimage.
+
+The normalization principle is that DnaX normalizes only what the toolchain mutates without the author's intent, and never what the author typed. Line endings qualify because git rewrites them on checkout. Deliberately out of scope, permanently: trailing whitespace, leading/trailing trimming, internal whitespace collapsing, and Unicode normalization. Git does not rewrite those, they are semantically live inside SQL string literals, and every additional rule widens the set of different SQL that shares a checksum.
+
+One limitation: content containing a lone carriage return is not round-trip stable, because git's expansion of `\n` to `\r\n` over an existing `\r` is not invertible. No normalization can recover it, and DnaX does not attempt to. Normal SQL is unaffected.
+
+Consumers should also commit a `.gitattributes` pinning `*.cs` and `*.sql` to `eol=lf`. That is defence in depth for diffs and working trees, not the fix—the runtime normalization is what makes checksums portable.
 
 ## Backups
 
@@ -245,7 +261,7 @@ The verifier builds a canonical fresh database, materializes every version from 
 - no entity tracking, repository generation, or query abstraction;
 - no inferred or automatically approved destructive changes;
 - no seed/demo data or long-running operational repair jobs;
-- no automatic history rewrite, squash, checksum acceptance, or drift repair;
+- no automatic history rewrite, squash, drift repair, or acceptance of changed migration content;
 - no lowest-common-denominator SQL dialect or automatic SQL translation;
 - no MySQL adapter or compatibility claim;
 - no CLI, code generator, Node.js, or Python toolchain.
