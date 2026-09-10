@@ -1,0 +1,23 @@
+<Project>
+
+  <!--
+    Intentionally almost empty.
+
+    NuGet imports this file before the consuming project body AND before the consumer's
+    Directory.Build.props, so nothing set here reaches the SDK's trim-analyzer plumbing:
+    the generated MSBuild editorconfig never receives build_property.EnableTrimAnalyzer,
+    and the analyzer stays silent. Verified empirically - setting IsTrimmable and
+    EnableTrimAnalyzer here produces zero diagnostics, while the identical properties in
+    the consumer's own Directory.Build.props produce IL2026/IL3050 as expected.
+
+    The trim properties therefore live in the consumer's Directory.Build.props (see
+    eng/mcpfab/Directory.Build.props in the DnaX repo for the block to adopt). This
+    package's job is to ship the banned-API list and to REFUSE TO BUILD when a server
+    has not adopted them - see MCPFAB003 in the .targets alongside this file.
+  -->
+
+  <PropertyGroup>
+    <McpFabTrimPolicyDefault>Analyzed</McpFabTrimPolicyDefault>
+  </PropertyGroup>
+
+</Project>

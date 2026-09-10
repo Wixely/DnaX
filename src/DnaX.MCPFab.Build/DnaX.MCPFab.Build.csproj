@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>DnaX.MCPFab.Build</PackageId>
+    <Description>Build-only trim policy, analyzer settings, and banned APIs for MCPFab MCP servers.</Description>
+    <!--
+      Ships an empty assembly purely because NuGet rejects a package with neither a lib
+      asset nor a dependency (NU5017), and a lib/_._ placeholder does not satisfy that
+      check. DevelopmentDependency keeps it out of consumers' reference closure.
+    -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <!-- NU5017/NU5128: expected for a build-only package that ships no lib/ and no dependencies. -->
+    <NoWarn>$(NoWarn);NU5017;NU5128</NoWarn>
+  </PropertyGroup>
+  <!--
+    Deliberately zero dependencies. The BannedApiAnalyzers reference lives in the
+    consumer's Directory.Build.props (eng/mcpfab/Directory.Build.props) alongside the
+    trim properties, because analyzer assets do not flow from a package dependency and
+    the trim properties cannot be set from package props at all.
+  -->
+  <ItemGroup>
+    <None Include="buildTransitive/**" Pack="true" PackagePath="buildTransitive/" />
+  </ItemGroup>
+</Project>

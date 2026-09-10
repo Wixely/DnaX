@@ -1,0 +1,66 @@
+<Project>
+
+  <!--
+    MCPFab trim policy enforcement.
+
+    Trim failures in MCP servers are silent, not loud:
+      * WithToolsFromAssembly() is [RequiresUnreferencedCode] and uses Assembly.GetTypes().
+        Trimmed, the server starts happily and advertises zero tools.
+      * Anonymous types passed to JsonSerializer.Serialize, and returned from minimal-API
+        handlers, serialise to {} rather than throwing.
+      * Serilog's ReadFrom.Configuration resolves sinks and enrichers by assembly scanning
+        and carries no trim annotations, so the trim analyzer reports nothing at all.
+
+    This package cannot switch the analyzers on itself (see the .props alongside this
+    file). What it can do is fail the build when they are off, which is what MCPFAB003
+    does - that is the difference between a documented convention and an enforced rule.
+  -->
+
+  <PropertyGroup>
+    <!--
+      Trimmed  : analyzers on, publishes trimmed, trim smoke test required.
+      Analyzed : analyzers on, ships untrimmed. The staging state while migrating.
+      Exempt   : analyzers off. Requires McpFabTrimExemptionReason.
+    -->
+    <McpFabTrimPolicy Condition="'$(McpFabTrimPolicy)' == ''">$(McpFabTrimPolicyDefault)</McpFabTrimPolicy>
+    <McpFabTrimPolicy Condition="'$(McpFabTrimPolicy)' == ''">Analyzed</McpFabTrimPolicy>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(McpFabTrimPolicy)' != 'Exempt'">
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
+  </ItemGroup>
+
+  <Target Name="_McpFabValidateTrimPolicy" BeforeTargets="Build">
+
+    <Error Condition="'$(McpFabTrimPolicy)' != 'Trimmed' AND '$(McpFabTrimPolicy)' != 'Analyzed' AND '$(McpFabTrimPolicy)' != 'Exempt'"
+           Code="MCPFAB001"
+           Text="McpFabTrimPolicy is '$(McpFabTrimPolicy)'. Valid values are Trimmed, Analyzed, or Exempt." />
+
+    <!--
+      An exemption is a permanent claim about a dependency, so it carries its
+      justification in the csproj next to the code, where it can be grepped and reviewed.
+    -->
+    <Error Condition="'$(McpFabTrimPolicy)' == 'Exempt' AND '$(McpFabTrimExemptionReason)' == ''"
+           Code="MCPFAB002"
+           Text="McpFabTrimPolicy is Exempt but McpFabTrimExemptionReason is empty. State which dependency prevents trimming and why (for example: Microsoft.PowerShell.SDK hosts scripts in-process and Microsoft does not support trimming it)." />
+
+    <!--
+      The rule that makes the policy real. Without the properties in the consumer's own
+      Directory.Build.props the analyzers never run, and a server would silently claim a
+      trim policy it is not actually being held to.
+    -->
+    <Error Condition="'$(McpFabTrimPolicy)' != 'Exempt' AND '$(EnableTrimAnalyzer)' != 'true'"
+           Code="MCPFAB003"
+           Text="McpFabTrimPolicy is '$(McpFabTrimPolicy)' but EnableTrimAnalyzer is not true, so no trim analysis is running. A NuGet package cannot set this for you - the SDK reads it before package props are imported. Copy the MCPFab block into this repository's Directory.Build.props (see eng/mcpfab/Directory.Build.props in the DnaX repository), or set McpFabTrimPolicy to Exempt with a reason." />
+
+    <Error Condition="'$(McpFabTrimPolicy)' != 'Exempt' AND '$(JsonSerializerIsReflectionEnabledByDefault)' != 'false'"
+           Code="MCPFAB004"
+           Text="McpFabTrimPolicy is '$(McpFabTrimPolicy)' but JsonSerializerIsReflectionEnabledByDefault is not false. Anonymous-type serialization would then fail silently as {} at runtime instead of erroring at build time. Copy the MCPFab block into this repository's Directory.Build.props." />
+
+    <Message Condition="'$(McpFabTrimPolicy)' == 'Exempt'"
+             Importance="high"
+             Text="MCPFab: '$(MSBuildProjectName)' is exempt from trimming. Reason: $(McpFabTrimExemptionReason)" />
+
+  </Target>
+
+</Project>
