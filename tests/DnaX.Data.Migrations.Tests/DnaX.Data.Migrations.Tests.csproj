@@ -8,6 +8,10 @@
     <ProjectReference Include="../../src/DnaX.Data.Migrations.PostgreSql/DnaX.Data.Migrations.PostgreSql.csproj" />
     <ProjectReference Include="../../src/DnaX.Data.Migrations.SqlServer/DnaX.Data.Migrations.SqlServer.csproj" />
     <ProjectReference Include="../../src/DnaX.Data.Migrations.Oracle/DnaX.Data.Migrations.Oracle.csproj" />
+    <ProjectReference Include="../../src/DnaX.RemoteAccess.Sqlite/DnaX.RemoteAccess.Sqlite.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources/embedded-migration.sql" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
