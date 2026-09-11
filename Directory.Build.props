@@ -9,7 +9,7 @@
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
-    <PackageVersion>10.0.0-alpha.3</PackageVersion>
+    <PackageVersion>10.0.0-alpha.4</PackageVersion>
     <Authors>DNAX contributors</Authors>
     <Company>DNAX contributors</Company>
     <Product>DNA X</Product>
