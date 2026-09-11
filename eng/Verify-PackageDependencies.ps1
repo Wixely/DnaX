@@ -24,6 +24,19 @@ $allowed = @{
     "DnaX.MCPFab.Abstractions" = @(
         "Microsoft.Extensions.Options"
     )
+    # The one deliberately un-isolated package: MCPFab is an application framework, so it carries
+    # the host, logging and MCP stack the servers would otherwise each reference themselves.
+    "DnaX.MCPFab" = @(
+        "DnaX.MCPFab.Abstractions",
+        "Microsoft.Extensions.Hosting.WindowsServices",
+        "ModelContextProtocol.AspNetCore",
+        "Serilog.AspNetCore",
+        "Serilog.Enrichers.Environment",
+        "Serilog.Enrichers.Process",
+        "Serilog.Enrichers.Thread",
+        "Serilog.Sinks.Console",
+        "Serilog.Sinks.File"
+    )
     # Build-only: ships MSBuild props/targets and a banned-API list, never an assembly.
     "DnaX.MCPFab.Build" = @()
     "DnaX.Data" = @(
