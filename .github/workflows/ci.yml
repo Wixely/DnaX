@@ -35,6 +35,13 @@ jobs:
       - name: Test
         run: dotnet test DNAX.slnx --configuration Release --no-build --no-restore
 
+      - name: Trim smoke test
+        shell: pwsh
+        # Publishes the MCPFab sample trimmed and asserts it still advertises tools and returns
+        # complete payloads. Every trim failure in this stack is silent - a trimmed server with
+        # zero tools, or a tool returning {} - so a build that merely succeeds proves nothing.
+        run: ./eng/Verify-TrimSmoke.ps1
+
       - name: Pack
         shell: pwsh
         run: |

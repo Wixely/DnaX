@@ -15,6 +15,7 @@
     <Project Path="src/DnaX.RemoteAccess.Sqlite/DnaX.RemoteAccess.Sqlite.csproj" />
     <Project Path="src/DnaX.RemoteAccess.Mcp/DnaX.RemoteAccess.Mcp.csproj" />
     <Project Path="src/DnaX.MCPFab.Abstractions/DnaX.MCPFab.Abstractions.csproj" />
+    <Project Path="src/DnaX.MCPFab/DnaX.MCPFab.csproj" />
     <Project Path="src/DnaX.MCPFab.Build/DnaX.MCPFab.Build.csproj" />
     <Project Path="src/DnaX.Compatibility/DnaX.Compatibility.csproj" />
   </Folder>
@@ -31,5 +32,6 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/DnaX.Sample.Web/DnaX.Sample.Web.csproj" />
+    <Project Path="samples/DnaX.MCPFab.TrimSample/DnaX.MCPFab.TrimSample.csproj" />
   </Folder>
 </Solution>

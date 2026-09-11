@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>DnaX.MCPFab.TrimSample</RootNamespace>
+    <!--
+      The whole point of this sample: it is published with PublishTrimmed and then asked to list
+      and call its tools. Trim failures in this stack are silent - WithToolsFromAssembly leaves a
+      server advertising zero tools, and anonymous types serialise to {} - so a sample that only
+      starts successfully would prove nothing.
+    -->
+    <McpFabTrimPolicy>Trimmed</McpFabTrimPolicy>
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+    <!--
+      IL2104 is the linker rolling up a THIRD-PARTY assembly's own trim warnings at publish.
+      Serilog produces one (IL2067 in PropertyValueConverter.TryConvertStructure, its
+      destructuring path), which is unreachable unless a message template uses {@x} - MCPFab
+      never does. First-party code stays strict: EnableTrimAnalyzer errors on our own call sites
+      at build time, before the linker ever runs.
+    -->
+    <NoWarn>$(NoWarn);IL2104</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/DnaX.MCPFab/DnaX.MCPFab.csproj" />
+  </ItemGroup>
+</Project>
