@@ -43,9 +43,15 @@ Write-Output "Published trimmed executable: $exeName ($sizeMb MB)"
 
 $process = $null
 try {
-    $process = Start-Process -FilePath $exePath `
-        -ArgumentList "--Server:Port=$Port", "--Server:Host=localhost" `
-        -WorkingDirectory $publishDir -PassThru -WindowStyle Hidden
+    $startArgs = @{
+        FilePath         = $exePath
+        ArgumentList     = @("--Server:Port=$Port", "--Server:Host=localhost")
+        WorkingDirectory = $publishDir
+        PassThru         = $true
+    }
+    # -WindowStyle is Windows-only; PowerShell Core on Linux rejects it outright.
+    if ($IsWindows -or $env:OS -eq "Windows_NT") { $startArgs.WindowStyle = "Hidden" }
+    $process = Start-Process @startArgs
 
     $base = "http://localhost:$Port"
     $ready = $false
