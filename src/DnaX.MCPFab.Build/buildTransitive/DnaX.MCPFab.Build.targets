@@ -53,7 +53,9 @@
            Code="MCPFAB003"
            Text="McpFabTrimPolicy is '$(McpFabTrimPolicy)' but EnableTrimAnalyzer is not true, so no trim analysis is running. A NuGet package cannot set this for you - the SDK reads it before package props are imported. Copy the MCPFab block into this repository's Directory.Build.props (see eng/mcpfab/Directory.Build.props in the DnaX repository), or set McpFabTrimPolicy to Exempt with a reason." />
 
-    <Error Condition="'$(McpFabTrimPolicy)' != 'Exempt' AND '$(JsonSerializerIsReflectionEnabledByDefault)' != 'false'"
+    <!-- Only the Trimmed tier requires this: Analyzed is the staging state, where the
+         anonymous-type sites are still present and reported as warnings. -->
+    <Error Condition="'$(McpFabTrimPolicy)' == 'Trimmed' AND '$(JsonSerializerIsReflectionEnabledByDefault)' != 'false'"
            Code="MCPFAB004"
            Text="McpFabTrimPolicy is '$(McpFabTrimPolicy)' but JsonSerializerIsReflectionEnabledByDefault is not false. Anonymous-type serialization would then fail silently as {} at runtime instead of erroring at build time. Copy the MCPFab block into this repository's Directory.Build.props." />
 

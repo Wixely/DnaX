@@ -20,9 +20,17 @@
     <AnalysisLevel>latest</AnalysisLevel>
   </PropertyGroup>
 
-  <!-- Trim analysis. Set McpFabTrimPolicy to Exempt in the csproj to opt a server out. -->
+  <!--
+    Trim analysis. Set McpFabTrimPolicy to Exempt in the csproj to opt a server out.
+
+    Analysed in both tiers, but only Trimmed is strict. A server mid-migration still has its
+    anonymous-type serialization sites, and every one of them is an IL2026/IL3050 - so if
+    Analyzed also promoted those to errors, no server could ever adopt the staging tier and the
+    migration would have to land in a single unreviewable change. Analyzed therefore reports
+    them as warnings: the count is visible, the build succeeds, and the sites can be migrated
+    incrementally. Flipping to Trimmed is what makes them errors.
+  -->
   <PropertyGroup Condition="'$(McpFabTrimPolicy)' != 'Exempt'">
-    <IsTrimmable>true</IsTrimmable>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <!-- Analyzer only. IsAotCompatible stays off until a server actually publishes AOT. -->
     <EnableAotAnalyzer>true</EnableAotAnalyzer>
@@ -31,18 +39,26 @@
     <!-- Interceptor-based generators; both replace reflection the trimmer cannot follow. -->
     <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
     <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+  </PropertyGroup>
 
+  <PropertyGroup Condition="'$(McpFabTrimPolicy)' == 'Trimmed'">
+    <!-- IsTrimmable asserts the assembly IS trim-safe, and promotes trim warnings to errors. -->
+    <IsTrimmable>true</IsTrimmable>
     <!--
-      Turns every anonymous-type serialization site from a runtime {} into a build-time
-      IL2026/IL3050. This is what makes the migration cost measurable up front instead
-      of discovered in production.
+      Turns every remaining anonymous-type serialization site from a runtime {} into a
+      build-time failure, rather than a server that starts and returns empty payloads.
     -->
     <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(McpFabTrimPolicy)' != 'Exempt'">
     <!-- Enforces the banned-API list shipped by DnaX.MCPFab.Build. -->
-    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.0.0">
+    <!--
+      No Version attribute: every MCPSharp server uses Central Package Management, which
+      rejects a Version on PackageReference (NU1008). The consuming repository declares
+      <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" ... /> instead.
+    -->
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
