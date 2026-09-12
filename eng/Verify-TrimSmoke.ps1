@@ -71,6 +71,17 @@ try {
     if ($null -eq $health.items) { throw "Health payload has no 'items'. The server-supplied health callback was stripped." }
     Write-Output "Health payload intact: status=$($health.status) items=$($health.items)"
 
+    # --- 1b. The embedded icon must survive trimming ---
+    $favicon = Invoke-WebRequest -Uri "$base/favicon.ico" -TimeoutSec 5
+    if ($favicon.StatusCode -ne 200) { throw "/favicon.ico returned $($favicon.StatusCode)." }
+    $ico = $favicon.Content
+    if ($ico.Length -lt 100) { throw "/favicon.ico returned $($ico.Length) bytes; the embedded resource was stripped." }
+    # ICO header: reserved 0x0000, then type 0x0001.
+    if ($ico[0] -ne 0 -or $ico[1] -ne 0 -or $ico[2] -ne 1 -or $ico[3] -ne 0) {
+        throw "/favicon.ico did not return a valid ICO container."
+    }
+    Write-Output "favicon intact: $($ico.Length) bytes, valid ICO header"
+
     $headers = @{ "Content-Type" = "application/json"; "Accept" = "application/json, text/event-stream" }
 
     function Invoke-Rpc([string] $body) {
