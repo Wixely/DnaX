@@ -31,6 +31,12 @@ public static class McpFabHost
         string contentRoot = McpFabConfiguration.GetContentRoot();
         bool isWindowsService = WindowsServiceHelpers.IsWindowsService();
 
+        // Only when there is a console to brand; a service has none.
+        if (!isWindowsService)
+        {
+            McpFabIcon.ApplyConsoleWindowIcon();
+        }
+
         // Anything thrown before the real logger exists would otherwise be invisible.
         Log.Logger = McpFabLogging.CreateBootstrapLogger(product, contentRoot);
 
@@ -153,6 +159,7 @@ public sealed class McpFabBuilder
 {
     private Action<IServiceProvider, IMcpFabBanner>? _banner;
     private Func<IServiceProvider, JsonObject>? _health;
+    private byte[]? _icon;
 
     internal McpFabBuilder(
         WebApplicationBuilder web,
@@ -217,6 +224,16 @@ public sealed class McpFabBuilder
         return this;
     }
 
+    /// <summary>
+    /// Overrides the icon served at <c>/favicon.ico</c>. Without this MCPFab uses the server's
+    /// own embedded <c>MCPSharp.wmcp.ico</c> if it has one, and otherwise its own copy.
+    /// </summary>
+    public McpFabBuilder Icon(byte[] ico)
+    {
+        _icon = ico;
+        return this;
+    }
+
     /// <summary>Builds the application and applies the standard pipeline.</summary>
     public McpFabApp Build()
     {
@@ -238,6 +255,9 @@ public sealed class McpFabBuilder
 
         // Health stays anonymous, as it was in every server: MCPHub probes it with no credentials
         // and treats a non-2xx as unhealthy.
+        // Anonymous, like /healthz: a browser or client fetching the icon has no credentials.
+        app.MapFavicon(_icon);
+
         // An explicit RequestDelegate rather than MapGet(Delegate): the delegate-based overloads
         // reflect over parameters and the return type, which is trim-unsafe, and an anonymous
         // return type would serialise to {} once trimmed rather than failing loudly.
