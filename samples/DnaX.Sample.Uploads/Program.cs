@@ -19,8 +19,14 @@ builder.Services.AddDnaXUploads(options =>
     options.Profiles["whole"] = new UploadProfile { Chunking = false };
     options.Profiles["minimal"] = new UploadProfile
     {
-        Multiple = false, Chunking = false, Resume = false, AutomaticRetry = false,
-        PersistMetadata = false, PersistFileBytes = 0, ShowPause = false, DragAndDrop = false
+        Multiple = false,
+        Chunking = false,
+        Resume = false,
+        AutomaticRetry = false,
+        PersistMetadata = false,
+        PersistFileBytes = 0,
+        ShowPause = false,
+        DragAndDrop = false
     };
 });
 var app = builder.Build();

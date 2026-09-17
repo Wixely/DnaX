@@ -1,6 +1,6 @@
 # Resilient uploads prototype
 
-Status: experimental, not packable or production-ready. Reviewed 2026-09-17.
+Status: experimental prerelease package, not production-ready. Reviewed 2026-09-17.
 
 The prototype provides a .NET 10 Razor Class Library, an authenticated HTTP endpoint group, a single-process disk store, and a browser-owned multi-file queue. Once the native input is mounted, capturing files, uploading, retrying, persisting progress and displaying results do not invoke .NET or depend on the Blazor circuit.
 
@@ -17,7 +17,7 @@ Data lives under the sample's ignored `upload-data` directory. The store keeps f
 
 ## Integration sketch
 
-Reference `src/DnaX.Uploads/DnaX.Uploads.csproj`; this prototype is intentionally not published as NuGet packages.
+Reference `src/DnaX.Uploads/DnaX.Uploads.csproj` locally, or install `DnaX.Uploads` version `10.0.0-alpha.6` from the Wixely GitHub Packages feed. This is an experimental distribution for evaluation; its API and journal format are not yet stable.
 
 ```csharp
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
@@ -122,6 +122,6 @@ Remaining work, owner Codex unless otherwise stated:
 2. Run actual 50 GiB and 100 GiB transfers, memory/disk measurements, fault injection during journal publication, and whole-file interruption through a representative proxy. Allocate test space and duration first.
 3. Verify physical Android/iOS file picker, suspension, reauthentication and circuit replacement; user provides device access.
 4. Add renewable leases, bounded aggregate browser persistence, per-owner quotas, browser-record expiry/logout cleanup, and a supported durable business-completion contract.
-5. Validate Linux and packaging/deployment requirements before publication. No consuming applications, commits, pushes or deployments were changed by this prototype.
+5. Validate platform and deployment behavior beyond CI builds/tests before production use. No consuming applications or application deployments were changed by this prototype.
 
-Recommended next action: review the local sample and select the first consumer pilot; then perform device and large-transfer acceptance before release.
+Recommended next action: review the local sample and select the first consumer pilot; then perform device and large-transfer acceptance before production use.

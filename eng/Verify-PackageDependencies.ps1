@@ -8,6 +8,7 @@ $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $allowed = @{
+    "DnaX.Uploads" = @()
     "DnaX.Compatibility" = @()
     "DnaX.Diagnostics" = @()
     "DnaX.RemoteAccess" = @()

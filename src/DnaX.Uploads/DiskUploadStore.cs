@@ -18,8 +18,12 @@ public sealed class DiskUploadStore : IDisposable
 
     public DiskUploadStore(UploadOptions configuration, TimeProvider? time = null)
     {
-        var options = new UploadOptions { Root = configuration.Root, MaximumReservedBytes = configuration.MaximumReservedBytes,
-            MaximumSessions = configuration.MaximumSessions };
+        var options = new UploadOptions
+        {
+            Root = configuration.Root,
+            MaximumReservedBytes = configuration.MaximumReservedBytes,
+            MaximumSessions = configuration.MaximumSessions
+        };
         foreach (var pair in configuration.Profiles) options.Profiles.Add(pair.Key, pair.Value);
         this.options = options;
         this.time = time ?? TimeProvider.System;

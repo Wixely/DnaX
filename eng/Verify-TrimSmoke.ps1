@@ -72,7 +72,7 @@ try {
     Write-Output "Health payload intact: status=$($health.status) items=$($health.items)"
 
     # --- 1b. The embedded icon must survive trimming ---
-    $favicon = Invoke-WebRequest -Uri "$base/favicon.ico" -TimeoutSec 5
+    $favicon = Invoke-WebRequest -UseBasicParsing -Uri "$base/favicon.ico" -TimeoutSec 5
     if ($favicon.StatusCode -ne 200) { throw "/favicon.ico returned $($favicon.StatusCode)." }
     $ico = $favicon.Content
     if ($ico.Length -lt 100) { throw "/favicon.ico returned $($ico.Length) bytes; the embedded resource was stripped." }
@@ -85,7 +85,7 @@ try {
     $headers = @{ "Content-Type" = "application/json"; "Accept" = "application/json, text/event-stream" }
 
     function Invoke-Rpc([string] $body) {
-        $raw = Invoke-WebRequest -Uri "$base/mcp" -Method Post -Headers $headers -Body $body -TimeoutSec 15
+        $raw = Invoke-WebRequest -UseBasicParsing -Uri "$base/mcp" -Method Post -Headers $headers -Body $body -TimeoutSec 15
         # Streamable HTTP replies as SSE; the JSON payload is on the data: line.
         $line = ($raw.Content -split "`n" | Where-Object { $_ -like "data: *" } | Select-Object -First 1)
         $json = if ($line) { $line.Substring(6) } else { $raw.Content }
@@ -117,5 +117,11 @@ try {
 }
 finally {
     if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
-    Remove-Item -LiteralPath $publishDir -Recurse -Force -ErrorAction SilentlyContinue
+    $resolvedPublish = [System.IO.Path]::GetFullPath($publishDir)
+    $resolvedTemp = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd([char[]]@('\', '/'))
+    if ([System.IO.Path]::GetDirectoryName($resolvedPublish) -ne $resolvedTemp -or
+        [System.IO.Path]::GetFileName($resolvedPublish) -notmatch '^mcpfab-trimsmoke-[0-9a-f]{32}$') {
+        throw "Refusing cleanup outside the dedicated trim-smoke temporary directory."
+    }
+    Remove-Item -LiteralPath $resolvedPublish -Recurse -Force -ErrorAction SilentlyContinue
 }

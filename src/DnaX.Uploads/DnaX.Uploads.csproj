@@ -1,4 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
-  <PropertyGroup><AddRazorSupportForMvc>true</AddRazorSupportForMvc><IsPackable>false</IsPackable></PropertyGroup>
+  <PropertyGroup>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <Description>Experimental circuit-independent browser uploads for Blazor with optional chunking, resumable queues, and authenticated streaming endpoints.</Description>
+  </PropertyGroup>
   <ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /></ItemGroup>
 </Project>

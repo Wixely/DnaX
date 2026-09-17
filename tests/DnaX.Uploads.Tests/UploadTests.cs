@@ -6,8 +6,11 @@ namespace DnaX.Uploads.Tests;
 public sealed class UploadTests : IDisposable
 {
     private readonly string root = Path.Combine(Path.GetTempPath(), "dnax-upload-test-" + Guid.NewGuid().ToString("N"));
-    private UploadOptions Options() => new() { Root = root,
-        Profiles = { ["chunks"] = new UploadProfile { ChunkBytes = 65536 }, ["whole"] = new UploadProfile { Chunking = false } } };
+    private UploadOptions Options() => new()
+    {
+        Root = root,
+        Profiles = { ["chunks"] = new UploadProfile { ChunkBytes = 65536 }, ["whole"] = new UploadProfile { Chunking = false } }
+    };
     private static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes));
     private static UploadRequest Request(string profile = "chunks", long length = 6) => new(Guid.NewGuid(), profile, "test.bin", length);
     private static Task<UploadStatus> Write(DiskUploadStore store, Guid id, long offset, byte[] bytes) =>
@@ -116,8 +119,11 @@ public sealed class UploadTests : IDisposable
     public async Task Parallel_duplicate_writers_cannot_append_twice()
     {
         using var store = new DiskUploadStore(Options()); var request = Request(); await store.CreateAsync("owner", request);
-        var writes = Enumerable.Range(0, 8).Select(async _ => { try { await Write(store, request.Id, 0, [1, 2, 3]); return true; }
-            catch (UploadException ex) when (ex.StatusCode == 409) { return false; } });
+        var writes = Enumerable.Range(0, 8).Select(async _ =>
+        {
+            try { await Write(store, request.Id, 0, [1, 2, 3]); return true; }
+            catch (UploadException ex) when (ex.StatusCode == 409) { return false; }
+        });
         Assert.Single(await Task.WhenAll(writes), success => success); Assert.Equal(3, store.Get("owner", request.Id).Offset);
     }
 
