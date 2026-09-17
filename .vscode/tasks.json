@@ -1,0 +1,5 @@
+{
+  "version": "2.0.0",
+  "tasks": [{ "label": "build upload prototype", "type": "process", "command": "dotnet",
+    "args": ["build", "samples/DnaX.Sample.Uploads/DnaX.Sample.Uploads.csproj"], "problemMatcher": "$msCompile" }]
+}

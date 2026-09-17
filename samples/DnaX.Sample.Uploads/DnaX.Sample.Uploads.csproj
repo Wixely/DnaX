@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup><IsPackable>false</IsPackable><PublishIISAssets>false</PublishIISAssets></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../../src/DnaX.Uploads/DnaX.Uploads.csproj" /></ItemGroup>
+</Project>

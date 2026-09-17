@@ -1,0 +1,11 @@
+{
+  "version": "0.2.0",
+  "configurations": [{
+    "name": "DNAX upload prototype", "type": "coreclr", "request": "launch",
+    "preLaunchTask": "build upload prototype",
+    "program": "${workspaceFolder}/samples/DnaX.Sample.Uploads/bin/Debug/net10.0/DnaX.Sample.Uploads.dll",
+    "cwd": "${workspaceFolder}/samples/DnaX.Sample.Uploads",
+    "env": { "ASPNETCORE_ENVIRONMENT": "Development" },
+    "serverReadyAction": { "action": "openExternally", "pattern": "Now listening on:\\s+(https?://\\S+)" }
+  }]
+}

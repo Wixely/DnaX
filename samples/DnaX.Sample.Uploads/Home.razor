@@ -1,0 +1,15 @@
+@page "/"
+@namespace DnaX.Sample.Uploads
+@using DnaX.Uploads
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+<main>
+    <h1>Uploads that outlive a circuit</h1>
+    <p>Local prototype. Select several files, interrupt the connection, then return. Files up to 16 MiB are saved in browser storage; larger files may require reselection after reload.</p>
+    <p>Each profile accepts up to 200 GiB per file. This is a configured limit, not a claim of verified large-file or mobile support.</p>
+    <section><h2>Chunked + resumable</h2><p>4 MiB chunks, two active files, independent recovery.</p>
+        <UploadPicker @rendermode="InteractiveServer" Profile="chunked" /></section>
+    <section><h2>Whole-file streaming</h2><p>One request per file. Interrupted files restart; completed receipts are recovered.</p>
+        <UploadPicker @rendermode="InteractiveServer" Profile="whole" /></section>
+    <section><h2>Features disabled</h2><p>Single file, no chunks, automatic retries, resume or browser persistence.</p>
+        <UploadPicker @rendermode="InteractiveServer" Profile="minimal" /></section>
+</main>

@@ -3,6 +3,11 @@
 .vs/
 .idea/
 .vscode/
+!.vscode/
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+**/upload-data/
 TestResults/
 artifacts/
 *.user

@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/DnaX.Uploads/DnaX.Uploads.csproj" />
     <Project Path="src/DnaX.Hosting/DnaX.Hosting.csproj" />
     <Project Path="src/DnaX.Data/DnaX.Data.csproj" />
     <Project Path="src/DnaX.Data.Migrations/DnaX.Data.Migrations.csproj" />
@@ -20,6 +21,7 @@
     <Project Path="src/DnaX.Compatibility/DnaX.Compatibility.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/DnaX.Uploads.Tests/DnaX.Uploads.Tests.csproj" />
     <Project Path="tests/DnaX.Hosting.Tests/DnaX.Hosting.Tests.csproj" />
     <Project Path="tests/DnaX.Data.Tests/DnaX.Data.Tests.csproj" />
     <Project Path="tests/DnaX.Data.Migrations.Tests/DnaX.Data.Migrations.Tests.csproj" />
@@ -31,6 +33,7 @@
     <Project Path="tests/DnaX.Compatibility.Tests/DnaX.Compatibility.Tests.csproj" />
   </Folder>
   <Folder Name="/samples/">
+    <Project Path="samples/DnaX.Sample.Uploads/DnaX.Sample.Uploads.csproj" />
     <Project Path="samples/DnaX.Sample.Web/DnaX.Sample.Web.csproj" />
     <Project Path="samples/DnaX.MCPFab.TrimSample/DnaX.MCPFab.TrimSample.csproj" />
   </Folder>

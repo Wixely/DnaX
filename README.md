@@ -18,6 +18,8 @@ Packages are deliberately independent:
 See [examples.md](examples.md) for worked examples and
 [`DnaX.Sample.Web`](samples/DnaX.Sample.Web/Program.cs) for composed hosting.
 
+An experimental [resilient uploads prototype](docs/uploads-prototype.md) includes a browser-owned multi-file queue, developer-controlled chunking/resume features, authenticated streaming endpoints and a Blazor sample. It is not yet a published package; large-file and mobile acceptance gates are documented separately.
+
 ## Host-independent files
 
 ```csharp

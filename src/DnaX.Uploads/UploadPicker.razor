@@ -1,0 +1,20 @@
+@namespace DnaX.Uploads
+@using Microsoft.AspNetCore.Components
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<div id="@Id" @ref="host" class="dnax-uploads" data-permanent></div>
+
+@code {
+    [Parameter] public string Endpoint { get; set; } = "/uploads";
+    [Parameter] public string Profile { get; set; } = "default";
+    [Parameter] public string Id { get; set; } = "dnax-uploads-" + Guid.NewGuid().ToString("N");
+    private ElementReference host;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/DnaX.Uploads/uploads.js");
+        await module.InvokeVoidAsync("mount", host, Endpoint, Profile);
+        await module.DisposeAsync();
+    }
+}

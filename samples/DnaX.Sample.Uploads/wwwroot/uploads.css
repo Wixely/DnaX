@@ -1,0 +1,9 @@
+:root { font-family: system-ui, sans-serif; color: #183144; background: #edf2f5; }
+main { max-width: 960px; margin: 3rem auto; padding: 0 1rem; }
+section { background: white; padding: 1.4rem; margin: 1rem 0; border-radius: 12px; }
+h1 { font-size: 2.2rem; } p { line-height: 1.6; }
+button, input { margin: .4rem; padding: .5rem; max-width: 95%; }
+button { cursor: pointer; border: 1px solid #627d8e; border-radius: 5px; background: #eff8ff; }
+small { display: block; margin: .5rem; }
+.dnax-upload-row { border-top: 1px solid #dae2e8; margin-top: 1rem; overflow-wrap: anywhere; }
+progress { max-width: 100%; }
