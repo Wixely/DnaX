@@ -78,7 +78,13 @@ Profiles are immutable records, copied at store construction and persisted with 
 | `DragAndDrop` | Enable or disable native drop capture |
 | `MaximumFileBytes` / `Lifetime` | Server-side file limit and absolute expiry |
 
-The minimal sample profile disables multiple selection, chunking, resume, automatic retries, browser persistence and drag/drop. These controls do not disable authorization, antiforgery, duplicate protection or byte-length validation. A custom headless UI API and fully configurable retry policies remain future work.
+The minimal sample profile disables multiple selection, chunking, resume, automatic retries, browser persistence and drag/drop. These controls do not disable authorization, antiforgery, duplicate protection or byte-length validation. Fully configurable retry policies remain future work.
+
+### Custom native UI (alpha.7)
+
+Import `mountCustom` from the package's `uploads.js` module and call `mountCustom(hostElement, endpoint, profile, render)`. The synchronous `render(snapshot, actions)` callback receives `features`, `error` and `jobs`. Each job contains `id`, `name`, `length`, `offset`, `state`, `error`, `hasFile`, `persistedFile` and copied `features`. It receives no File objects. Actions are `addFiles(files)`, `setPickerOpen(bool)`, `pause(id)`, `resume(id)`, `cancel(id)`, `reselect(id, file)` and `dismiss(id)`.
+
+Capture file references synchronously in native change/drop handlers before passing them to `addFiles`. Keep native inputs stable while the OS picker is open. Call `setPickerOpen(true)` on opening and `setPickerOpen(false)` on cancellation; selection actions clear the flag. Respect feature controls when presenting actions. Catch asynchronous action failures in the host UI. A renderer exception is logged but does not interrupt the transfer queue. The existing default picker remains unchanged. All application UI code stays in the consuming application.
 
 Whole-file mode sends the File/Blob directly in one `application/octet-stream` request and streams the request body to disk without `IFormFile` buffering. An interrupted uncommitted file retries from byte zero. Already-completed files reconcile by receipt without retransmission. Request size is set before reading the body; operators must configure upstream proxy limits and timeouts separately. No setting silently switches whole-file mode to chunking.
 

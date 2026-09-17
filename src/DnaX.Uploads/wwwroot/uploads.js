@@ -1,5 +1,6 @@
 // Experimental transport: no Blazor/SignalR or .NET callbacks on the upload path.
 const managers = new Map();
+const customViews = new WeakMap();
 const terminal = new Set(['complete', 'cancelled']);
 const digest = async blob => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())))
     .map(n => n.toString(16).padStart(2, '0')).join('');
@@ -211,13 +212,27 @@ class UploadManager {
     }
     attach(view) {
         this.views.add(view); this.render();
-        return this.ready.then(() => this.render()).catch(error => { view.textContent = error.message; });
+        return this.ready.then(() => this.render()).catch(error => {
+            if (customViews.has(view)) { this.storageError = error.message; this.render(); }
+            else view.textContent = error.message;
+        });
     }
     render() {
         // Do not replace a native file input while its OS picker owns the selection.
         if (this.picker) return;
         for (const view of this.views) {
             if (!view.isConnected) { this.views.delete(view); continue; }
+            const custom = customViews.get(view);
+            if (custom) {
+                const snapshot = { features: this.features ? { ...this.features } : null, error: this.storageError,
+                    jobs: [...this.jobs.values()].map(job => ({ id: job.id, name: job.name, length: job.length,
+                        offset: job.offset, state: job.state, error: job.error || '', hasFile: !!job.file,
+                        persistedFile: !!job.persistedFile, features: { ...job.features } })) };
+                // Presentation failures must not abort accepted-byte recovery or the transfer queue.
+                try { custom.render(snapshot, custom.actions); }
+                catch (error) { console.error('Upload view render failed.', error); }
+                continue;
+            }
             view.replaceChildren();
             const f = this.features; if (!f) { view.textContent = 'Loading upload settings…'; continue; }
             const input = document.createElement('input'); input.type = 'file'; input.multiple = f.multiple;
@@ -269,12 +284,40 @@ class UploadManager {
     }
 }
 
-export function mount(view, endpoint, profile) {
+function managerFor(endpoint, profile) {
     endpoint = new URL(endpoint, document.baseURI).href.replace(/\/$/, '');
     if (new URL(endpoint).origin !== location.origin) throw new Error('Uploads must use a same-origin endpoint.');
     const key = `${endpoint}|${profile}`;
     if (!managers.has(key)) managers.set(key, new UploadManager(endpoint, profile));
-    return managers.get(key).attach(view);
+    return managers.get(key);
+}
+
+export function mount(view, endpoint, profile) {
+    return managerFor(endpoint, profile).attach(view);
+}
+
+// Native applications can preserve their own picker, progress markup and accessibility behavior.
+// The synchronous renderer receives copied state and browser-only actions; no File objects or .NET calls.
+export function mountCustom(view, endpoint, profile, render) {
+    if (typeof render !== 'function') throw new TypeError('A synchronous upload renderer is required.');
+    const manager = managerFor(endpoint, profile);
+    const jobFor = id => { const job = manager.jobs.get(id); if (!job) throw new Error('Upload is unavailable.'); return job; };
+    const actions = {
+        addFiles: files => { const captured = Array.from(files); manager.picker = false; return manager.add(captured); },
+        setPickerOpen: open => { manager.picker = !!open; if (!open) manager.render(); },
+        pause: id => manager.pause(jobFor(id)),
+        resume: id => manager.resume(jobFor(id)),
+        cancel: id => manager.cancel(jobFor(id)),
+        reselect: (id, file) => { manager.picker = false; return manager.reselect(jobFor(id), file); },
+        dismiss: async id => {
+            const job = jobFor(id); if (!terminal.has(job.state)) return;
+            manager.jobs.delete(id);
+            if (job.features.persistMetadata) await storage('delete', manager.prefix + id);
+            manager.render();
+        }
+    };
+    customViews.set(view, { render, actions });
+    return manager.attach(view);
 }
 
 // The host should call this before an application-controlled full reload.
