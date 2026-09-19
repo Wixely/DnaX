@@ -84,7 +84,7 @@ public sealed class McpFabTargetRegistryTests
 
         Assert.Contains(
             registry.Problems,
-            problem => problem.Contains("ASCII letters", StringComparison.Ordinal));
+            problem => problem.Contains("whitespace", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -127,5 +127,39 @@ public sealed class McpFabTargetRegistryTests
         Assert.Empty(registry.Problems);
         Assert.Equal("two", registry.Resolve("site2").ConnectionString);
         Assert.Equal("site2", registry.Default!.Alias);
+    }
+}
+
+/// <summary>Regression cover for aliases that real deployments actually use.</summary>
+public sealed class McpFabTargetRegistryAliasFormatTests
+{
+    private sealed class Entry : McpFabTargetEntry;
+
+    [Theory]
+    [InlineData("redis.boyleuat.com")]      // the alias v1.2.0 rejected
+    [InlineData("redis.boylesports.com")]
+    [InlineData("db-01:6379")]
+    [InlineData("plain")]
+    [InlineData("with_underscore")]
+    [InlineData("with-hyphen")]
+    public void HostnameAndEndpointAliasesAreAccepted(string alias)
+    {
+        McpFabTargetRegistry<Entry> registry =
+            McpFabTargetRegistry<Entry>.Create([new Entry { Alias = alias }]);
+
+        Assert.Empty(registry.Problems);
+        Assert.Equal(alias, registry.Resolve(alias).Alias);
+    }
+
+    [Theory]
+    [InlineData("has space")]
+    [InlineData("has\ttab")]
+    [InlineData("has\nnewline")]
+    public void WhitespaceAliasesAreStillRejected(string alias)
+    {
+        McpFabTargetRegistry<Entry> registry =
+            McpFabTargetRegistry<Entry>.Create([new Entry { Alias = alias }]);
+
+        Assert.NotEmpty(registry.Problems);
     }
 }

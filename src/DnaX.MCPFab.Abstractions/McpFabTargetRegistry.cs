@@ -81,7 +81,7 @@ public sealed class McpFabTargetRegistry<TEntry>
             else if (!IsValidAlias(entry.Alias))
             {
                 problems.Add(
-                    $"Alias '{entry.Alias}' must contain only ASCII letters, digits, '-' or '_' and be at most 64 characters.");
+                    $"Alias '{entry.Alias}' must be at most 64 characters and contain no whitespace or control characters.");
                 continue;
             }
 
@@ -167,6 +167,16 @@ public sealed class McpFabTargetRegistry<TEntry>
                 : $"Unknown alias '{alias}'. Configured aliases: {known}.");
     }
 
+    /// <summary>
+    /// Rejects only what actually breaks: whitespace, control characters, and absurd length.
+    /// </summary>
+    /// <remarks>
+    /// This was an allow-list of letters, digits, '-' and '_', imported from KodiMCPSharp's
+    /// validator and applied to every server. RedisMCPSharp validated aliases not at all and its
+    /// real ones are hostnames - redis.boyleuat.com - so the allow-list rejected working
+    /// production configuration. An alias is a handle an agent passes back verbatim; it does not
+    /// need to be an identifier.
+    /// </remarks>
     private static bool IsValidAlias(string alias) =>
-        alias.Length <= 64 && alias.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_');
+        alias.Length <= 64 && !alias.Any(c => char.IsWhiteSpace(c) || char.IsControl(c));
 }
