@@ -56,6 +56,13 @@ on:
         type: string
         required: false
         default: "linux/amd64,linux/arm64"
+    secrets:
+      PACKAGES_TOKEN:
+        description: >-
+          Token with read:packages for the Wixely feed, where DnaX.MCPFab lives. Optional: the
+          job token is used when it is absent, which works when the package grants this
+          repository access. Callers pass `secrets: inherit`.
+        required: false
 
 permissions:
   contents: write
@@ -143,6 +150,18 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ inputs.dotnet_version }}
+
+      - name: Add Wixely feed credentials
+        # DnaX.MCPFab lives on GitHub Packages, which requires authentication even for public
+        # packages: without this, restore fails with NU1301 / 401 Unauthorized. The source name
+        # must match the one in the repository's NuGet.config, because NuGet resolves
+        # credentials by source name.
+        run: >-
+          dotnet nuget update source GitHub-Wixely-Packages
+          --username ${{ github.actor }}
+          --password "${{ secrets.PACKAGES_TOKEN || github.token }}"
+          --store-password-in-clear-text
+          --configfile NuGet.config
 
       - name: Restore
         run: dotnet restore "${{ env.SOLUTION_FILE }}"
@@ -233,6 +252,12 @@ jobs:
           context: .
           file: ${{ inputs.dockerfile }}
           platforms: ${{ inputs.docker_platforms }}
+          # A BuildKit secret, not a build-arg: a build-arg would be recorded in the image
+          # history. The Dockerfile mounts it only for the restore layer.
+          secrets: |
+            nuget_token=${{ secrets.PACKAGES_TOKEN || github.token }}
+          build-args: |
+            NUGET_USER=${{ github.actor }}
           push: ${{ startsWith(github.ref, 'refs/tags/') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
