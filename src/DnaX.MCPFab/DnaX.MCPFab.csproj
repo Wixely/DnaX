@@ -10,6 +10,9 @@
     <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="DnaX.MCPFab.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- The shared product icon, so no server needs its own EmbeddedResource entry. -->
     <EmbeddedResource Include="wmcp.ico" LogicalName="DnaX.MCPFab.wmcp.ico" />
   </ItemGroup>

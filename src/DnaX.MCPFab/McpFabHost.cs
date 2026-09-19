@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Server;
 using Serilog;
 
 namespace DnaX.MCPFab;
@@ -122,6 +124,11 @@ public static class McpFabHost
         web.Services.AddAuthorization();
 
         IMcpServerBuilder mcp = web.Services.AddMcpServer().WithHttpTransport();
+
+        // Without this a refusal reaches the caller as "An error occurred invoking '<tool>'",
+        // with the reason visible only in the server log - so an agent cannot correct itself.
+        web.Services.AddOptions<McpServerOptions>().Configure<ILoggerFactory>((options, loggerFactory) =>
+            options.Filters.Request.CallToolFilters.Add(McpFabToolErrors.Create(loggerFactory)));
 
         return new McpFabBuilder(web, mcp, product, server, contentRoot, isWindowsService);
     }
