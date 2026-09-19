@@ -21,21 +21,19 @@ WORKDIR /src
 COPY NuGet.config global.json Directory.Build.props Directory.Packages.props ./
 COPY ${PROJECT} ./
 ARG TARGETARCH
-ARG NUGET_USER=github-actions
-# The token arrives as a BuildKit secret, mounted only for this layer, so it is never written
-# into the image or its history. DnaX.MCPFab lives on GitHub Packages, which requires
-# authentication even for public packages; without it restore fails with NU1301 / 401.
-# Building without the secret still works for a server that needs no authenticated feed.
-RUN --mount=type=secret,id=nuget_token \
+# DnaX.MCPFab comes from GitHub Packages, which refuses anonymous downloads. Pass a token with
+# read:packages as a BuildKit secret, so it is never recorded in the image history:
+#   docker build --secret id=nuget_github_token,env=GITHUB_TOKEN .
+RUN --mount=type=secret,id=nuget_github_token \
     arch="${TARGETARCH:-amd64}"; \
     if [ "$arch" = "amd64" ]; then arch="x64"; fi; \
     rid="linux-$arch"; \
-    if [ -s /run/secrets/nuget_token ]; then \
-      dotnet nuget update source GitHub-Wixely-Packages \
-        --username "${NUGET_USER}" \
-        --password "$(cat /run/secrets/nuget_token)" \
-        --store-password-in-clear-text \
-        --configfile NuGet.config; \
+    if [ -s /run/secrets/nuget_github_token ]; then \
+    dotnet nuget update source GitHub-Wixely-Packages \
+    --username token \
+    --password "$(cat /run/secrets/nuget_github_token)" \
+    --store-password-in-clear-text \
+    --configfile NuGet.config; \
     fi; \
     dotnet restore "${PROJECT}" \
     -r "$rid" \
