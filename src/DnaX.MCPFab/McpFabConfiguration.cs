@@ -14,15 +14,33 @@ public static class McpFabConfiguration
     /// </summary>
     public static string GetContentRoot()
     {
-        // Under `dotnet run` or `dotnet X.dll`, ProcessPath is the dotnet host rather than the
-        // app, so prefer the app base directory and fall back to the process location.
-        string? baseDirectory = AppContext.BaseDirectory;
-        if (!string.IsNullOrWhiteSpace(baseDirectory))
+        // ProcessPath first, and this order is load-bearing. These servers publish with
+        // PublishSingleFile and IncludeAllContentForSelfExtract, where AppContext.BaseDirectory
+        // is the TEMP EXTRACTION folder, not the folder holding the executable. Preferring
+        // BaseDirectory makes the server look for {Product}.json somewhere it can never be,
+        // start with no configuration at all, and report every target as unconfigured - which
+        // is exactly how v1.2.0 of RedisMCPSharp shipped broken.
+        string? processPath = Environment.ProcessPath;
+        string? processDirectory = string.IsNullOrWhiteSpace(processPath)
+            ? null
+            : Path.GetDirectoryName(processPath);
+
+        // The one case where ProcessPath is wrong: `dotnet X.dll` makes it the shared host, so
+        // the app lives at BaseDirectory instead.
+        bool launchedByDotnetHost = !string.IsNullOrWhiteSpace(processPath)
+            && string.Equals(
+                Path.GetFileNameWithoutExtension(processPath),
+                "dotnet",
+                StringComparison.OrdinalIgnoreCase);
+
+        if (!launchedByDotnetHost && !string.IsNullOrWhiteSpace(processDirectory))
         {
-            return baseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return processDirectory;
         }
 
-        return Path.GetDirectoryName(Environment.ProcessPath) ?? Directory.GetCurrentDirectory();
+        return string.IsNullOrWhiteSpace(AppContext.BaseDirectory)
+            ? processDirectory ?? Directory.GetCurrentDirectory()
+            : AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
     }
 
     /// <summary>

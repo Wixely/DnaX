@@ -30,6 +30,7 @@
     <Project Path="tests/DnaX.Diagnostics.Tests/DnaX.Diagnostics.Tests.csproj" />
     <Project Path="tests/DnaX.RemoteAccess.Tests/DnaX.RemoteAccess.Tests.csproj" />
     <Project Path="tests/DnaX.MCPFab.Abstractions.Tests/DnaX.MCPFab.Abstractions.Tests.csproj" />
+    <Project Path="tests/DnaX.MCPFab.Tests/DnaX.MCPFab.Tests.csproj" />
     <Project Path="tests/DnaX.Compatibility.Tests/DnaX.Compatibility.Tests.csproj" />
   </Folder>
   <Folder Name="/samples/">
