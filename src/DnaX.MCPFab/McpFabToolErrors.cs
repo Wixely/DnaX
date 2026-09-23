@@ -65,7 +65,7 @@ public static class McpFabToolErrors
     /// <remarks>
     /// MCPEXP002 is suppressed deliberately and narrowly. The filter pipeline is marked "for
     /// evaluation purposes only and subject to change or removal", and it is the only hook that
-    /// reaches every tool without editing each one - the estate has 824. Suppressing here rather
+    /// reaches every tool without editing each one - the estate has 1,435. Suppressing here rather
     /// than through NoWarn keeps the dependency greppable and confined to this file, and if the
     /// API is removed the failure is a compile error at upgrade time, not silent behaviour.
     /// </remarks>
