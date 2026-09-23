@@ -1,0 +1,10 @@
+# Keeps `dotnet format` in agreement with .gitattributes. Without end_of_line, format uses the
+# platform default, so on Windows it rewrites files to CRLF while .gitattributes stores LF - and
+# `--verify-no-changes` then fails on the Windows CI leg for files it has otherwise left alone.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
