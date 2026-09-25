@@ -266,6 +266,36 @@ public sealed class McpJsonRewriterTests
     }
 
     [Fact]
+    public void DeclinesAnObjectTypedSequenceThatMayHoldAnonymousValues()
+    {
+        // Regression: RedisMCPSharp builds its cluster key count as List<object> and adds anonymous
+        // types to it. An earlier version accepted `object` as scalar-safe and turned
+        //   "perNode":[{"endpoint":"...","keys":70036}]
+        // into
+        //   "perNode":["{ endpoint = ..., keys = 70036 }"]
+        // It compiled and ran; only a diff of live tool output caught it.
+        (string source, McpJsonRewriteResult result) = Rewrite("""
+                    var perNode = new List<object>();
+                    perNode.Add(new { endpoint = "10.0.0.1:6379", keys = 7 });
+                    return JsonSerializer.Serialize(new { perNode }, Options);
+            """);
+
+        Assert.Equal(0, result.Rewritten);
+        Assert.Contains("JsonSerializer.Serialize", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DeclinesAnObjectTypedMember()
+    {
+        (_, McpJsonRewriteResult result) = Rewrite("""
+                    object payload = new { a = 1 };
+                    return JsonSerializer.Serialize(new { payload }, Options);
+            """);
+
+        Assert.Equal(0, result.Rewritten);
+    }
+
+    [Fact]
     public void KeepsALeadingComment()
     {
         (string source, _) = Rewrite("""
