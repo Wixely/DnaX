@@ -32,6 +32,10 @@
     <Project Path="tests/DnaX.MCPFab.Abstractions.Tests/DnaX.MCPFab.Abstractions.Tests.csproj" />
     <Project Path="tests/DnaX.MCPFab.Tests/DnaX.MCPFab.Tests.csproj" />
     <Project Path="tests/DnaX.Compatibility.Tests/DnaX.Compatibility.Tests.csproj" />
+    <Project Path="tests/McpFabJsonRewriter.Tests/McpFabJsonRewriter.Tests.csproj" />
+  </Folder>
+  <Folder Name="/eng/">
+    <Project Path="eng/McpFabJsonRewriter/McpFabJsonRewriter.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/DnaX.Sample.Uploads/DnaX.Sample.Uploads.csproj" />

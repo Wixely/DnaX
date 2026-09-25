@@ -76,6 +76,30 @@ public static class McpJson
     }
 
     /// <summary>
+    /// Projects a sequence of key/value pairs into a JSON object, as a dictionary serialises.
+    /// </summary>
+    /// <remarks>
+    /// <c>Dictionary&lt;string, T&gt;</c> writes as a JSON object, not an array of pairs, so a
+    /// rewrite that treated one as an ordinary sequence would change the payload's shape. Insertion
+    /// order is preserved, matching what the reflection-based serialiser produced.
+    /// </remarks>
+    public static JsonObject Map<T>(IEnumerable<KeyValuePair<string, T>> source, Func<T, JsonNode?> map)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(map);
+
+        JsonObject target = [];
+        foreach (KeyValuePair<string, T> pair in source)
+        {
+            // Unlike Set, a null value is written: a dictionary entry that exists with a null value
+            // is not the same as an absent key, and WhenWritingNull did not remove it.
+            target[pair.Key] = map(pair.Value);
+        }
+
+        return target;
+    }
+
+    /// <summary>
     /// Converts a boxed value of unknown runtime type into a JSON value.
     /// </summary>
     /// <remarks>

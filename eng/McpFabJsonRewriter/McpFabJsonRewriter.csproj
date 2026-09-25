@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Codemod that converts JsonSerializer.Serialize(new { ... }) into McpJson chains, which is the
+    precondition for putting a server on the Trimmed policy tier. Deliberately NOT packable: it is
+    repo tooling in the same sense as eng/Verify-TrimSmoke.ps1, run by hand during a migration and
+    never referenced by a consumer. The durable guard against the pattern returning is the trim
+    tier plus BannedSymbols.txt in DnaX.MCPFab.Build, not this tool.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>McpFabJsonRewriter</AssemblyName>
+    <RootNamespace>DnaX.MCPFab.Tooling</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+</Project>
