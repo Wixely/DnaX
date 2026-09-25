@@ -224,6 +224,47 @@ public sealed class McpJsonRewriterTests
         Assert.Contains("""Set("names", McpJson.Array(names,""", source, StringComparison.Ordinal);
     }
 
+    // A tool file as the estate actually writes them: no DnaX.MCPFab import, because nothing in the
+    // file needed one before the rewrite.
+    private static string WithoutImportSource(string returned) =>
+        $$"""
+        using System.Text.Json;
+
+        public static class Probe
+        {
+            public static readonly JsonSerializerOptions Options = new();
+
+            public static string Run() => JsonSerializer.Serialize({{returned}}, Options);
+        }
+        """;
+
+    [Fact]
+    public void AddsTheMcpJsonImportWhenItIsMissing()
+    {
+        // None of RedisMCPSharp's eight tool files imported DnaX.MCPFab, so without this every
+        // rewritten file failed to compile.
+        (string source, McpJsonRewriteResult result) =
+            RewriteHarness.Rewrite(WithoutImportSource("new { a = 1 }"));
+
+        Assert.Equal(1, result.Rewritten);
+        Assert.Equal(1, source.Split("using DnaX.MCPFab;").Length - 1);
+        // Sorted position, so a later `dotnet format` pass does not move it.
+        Assert.True(
+            source.IndexOf("using DnaX.MCPFab;", StringComparison.Ordinal)
+                < source.IndexOf("using System.Text.Json;", StringComparison.Ordinal),
+            "The import should sort before System.*.");
+    }
+
+    [Fact]
+    public void DoesNotAddTheImportToAFileItDidNotChange()
+    {
+        (string source, McpJsonRewriteResult result) =
+            RewriteHarness.Rewrite(WithoutImportSource("""new System.Uri("https://example.test")"""));
+
+        Assert.Equal(0, result.Rewritten);
+        Assert.DoesNotContain("using DnaX.MCPFab;", source, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void KeepsALeadingComment()
     {

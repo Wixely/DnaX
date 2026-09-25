@@ -58,7 +58,46 @@ public sealed class McpJsonRewriter : CSharpSyntaxRewriter
 
         McpJsonRewriter rewriter = new(model, dialect);
         SyntaxNode root = rewriter.Visit(model.SyntaxTree.GetRoot());
+
+        if (rewriter._rewritten > 0)
+        {
+            root = EnsureMcpJsonImport(root);
+        }
+
         return new McpJsonRewriteResult(root, rewriter._rewritten, rewriter._skipped);
+    }
+
+    /// <summary>
+    /// Adds <c>using DnaX.MCPFab;</c> when the rewrite introduced <c>McpJson</c>.
+    /// </summary>
+    /// <remarks>
+    /// None of the eight tool files in RedisMCPSharp imported it, so without this every rewritten
+    /// file failed to compile - a whole-file failure rather than a subtle one, but it would have
+    /// turned a clean run into a manual pass over every file the tool touched.
+    /// </remarks>
+    private static SyntaxNode EnsureMcpJsonImport(SyntaxNode root)
+    {
+        const string Namespace = "DnaX.MCPFab";
+
+        if (root is not CompilationUnitSyntax unit
+            || unit.Usings.Any(directive => directive.Name?.ToString() == Namespace))
+        {
+            return root;
+        }
+
+        // NormalizeWhitespace is required, not cosmetic: a directive built from bare tokens carries
+        // no trivia at all and renders as "usingDnaX.MCPFab;".
+        UsingDirectiveSyntax import = SyntaxFactory
+            .UsingDirective(SyntaxFactory.ParseName(Namespace))
+            .NormalizeWhitespace()
+            .WithTrailingTrivia(SyntaxFactory.ElasticCarriageReturnLineFeed);
+
+        // Inserted in sorted position so the file still satisfies whatever using-order rule the
+        // repo enforces, rather than being reordered by a later `dotnet format` pass.
+        int index = unit.Usings.TakeWhile(directive =>
+            string.CompareOrdinal(directive.Name?.ToString(), Namespace) < 0).Count();
+
+        return unit.WithUsings(unit.Usings.Insert(index, import));
     }
 
     /// <inheritdoc />
