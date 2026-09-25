@@ -338,7 +338,7 @@ public sealed class McpJsonRewriter : CSharpSyntaxRewriter
             return mapped is null ? null : $"McpJson.Array({expression}, item => {mapped})";
         }
 
-        if (!IsScalarSafe(underlying))
+        if (!IsScalarSafe(underlying, dialect))
         {
             failure = $"'{expression}' is of type '{underlying.ToDisplayString()}', which McpJson.Scalar would "
                 + "render with ToString rather than as structured JSON";
@@ -404,7 +404,7 @@ public sealed class McpJsonRewriter : CSharpSyntaxRewriter
             }
         }
 
-        if (!IsScalarSafe(underlying))
+        if (!IsScalarSafe(underlying, dialect))
         {
             failure = $"element type '{underlying.ToDisplayString()}' is not one McpJson.Scalar renders faithfully";
             return null;
@@ -595,8 +595,13 @@ public sealed class McpJsonRewriter : CSharpSyntaxRewriter
     /// Mirrors Scalar's own type switch. Anything absent here would still compile and would still
     /// produce JSON, which is why the rewriter must decline rather than let it through.
     /// </remarks>
-    private static bool IsScalarSafe(ITypeSymbol type)
+    private static bool IsScalarSafe(ITypeSymbol type, McpJsonDialect dialect)
     {
+        if (dialect.TrustBoxedScalars && type.SpecialType == SpecialType.System_Object)
+        {
+            return true;
+        }
+
         if (BindsDirectly(type) || type.SpecialType == SpecialType.System_UInt64)
         {
             return true;
@@ -607,10 +612,19 @@ public sealed class McpJsonRewriter : CSharpSyntaxRewriter
             return true;
         }
 
+        // `object` is deliberately absent. System.Text.Json serialises it by its RUNTIME type, so a
+        // List<object> holding anonymous types writes real JSON objects, whereas McpJson.Scalar can
+        // only recognise scalars and falls back to ToString. RedisMCPSharp's cluster key count is
+        // exactly that shape, and an earlier version of this tool turned
+        //   "perNode":[{"endpoint":"192.168.3.152:6379","keys":70036}]
+        // into
+        //   "perNode":["{ endpoint = 192.168.3.152:6379, keys = 70036 }"]
+        // which compiled, ran, and was caught only by diffing live tool output. Values that really
+        // are boxed scalars - a SQL row cell - still convert, but a person decides that per site.
         return Display(type) switch
         {
             "System.DateTime" or "System.DateOnly" or "System.TimeOnly"
-                or "System.TimeSpan" or "System.Guid" or "object" => true,
+                or "System.TimeSpan" or "System.Guid" => true,
             _ => false,
         };
     }

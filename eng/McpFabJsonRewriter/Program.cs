@@ -13,7 +13,10 @@ if (args.Length is 0 or > 2 || args[0] is "-h" or "--help")
         decline. Build the target repo first: the rewriter needs a semantic model to type each
         member, and takes its references from the repo's most recent build output.
 
-        Run `dotnet format` afterwards - the chains are emitted correct but not laid out.
+        Run `dotnet format whitespace <solution>` afterwards - the chains are emitted correct but
+        not laid out. Use the `whitespace` subcommand specifically: plain `dotnet format` also runs
+        analyzer code fixes, and the fix it offers for the remaining IL2026/IL3050 sites emits
+        [RequiresDynamicCode()] with no message argument, which does not compile.
         """);
     return 0;
 }
@@ -118,7 +121,7 @@ if (skipped.Count > 0)
 
 Console.WriteLine();
 Console.WriteLine(apply
-    ? $"Rewrote {rewritten} site(s) across {changedFiles} file(s). Run `dotnet format` next."
+    ? $"Rewrote {rewritten} site(s) across {changedFiles} file(s). Run `dotnet format whitespace` next."
     : $"Would rewrite {rewritten} site(s) across {changedFiles} file(s). Re-run with --apply.");
 
 return 0;

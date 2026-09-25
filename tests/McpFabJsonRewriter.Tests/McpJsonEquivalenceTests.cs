@@ -262,22 +262,29 @@ public sealed class McpJsonEquivalenceTests
     }
 
     [Fact]
-    public void ADictionaryOfBoxedValuesKeepsEachRuntimeType()
+    public void ADictionaryOfBoxedValuesConvertsFaithfullyWhenAPersonChoosesIt()
     {
-        // The SQLMCPSharp shape: cells boxed as object, typed only at runtime.
-        string json = Run("""
-                    return JsonSerializer.Serialize(new { row = Row }, Options);
-            """,
-            """
-                public static readonly Dictionary<string, object?> Row = new()
-                {
-                    ["id"] = 7,
-                    ["name"] = "alpha",
-                    ["ratio"] = 1.5d,
-                    ["active"] = true,
-                    ["absent"] = null,
-                };
-            """);
+        // The SQLMCPSharp shape: cells boxed as object, typed only at runtime. The codemod will not
+        // apply this automatically - `object` can just as easily hold an anonymous type, which
+        // Scalar cannot render - but when a person knows the values are DB scalars, the conversion
+        // is exact. This pins that, so the manual change has the same proof as an automatic one.
+        string json = RewriteHarness.Equivalent(
+            RewriteHarness.Source(
+                """
+                        return JsonSerializer.Serialize(new { row = Row }, Options);
+                """,
+                Options,
+                """
+                    public static readonly Dictionary<string, object?> Row = new()
+                    {
+                        ["id"] = 7,
+                        ["name"] = "alpha",
+                        ["ratio"] = 1.5d,
+                        ["active"] = true,
+                        ["absent"] = null,
+                    };
+                """),
+            McpJsonDialect.Default with { TrustBoxedScalars = true });
 
         Assert.Equal("""{"row":{"id":7,"name":"alpha","ratio":1.5,"active":true,"absent":null}}""", json);
     }

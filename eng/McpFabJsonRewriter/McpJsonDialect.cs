@@ -42,6 +42,18 @@ public enum McpJsonEnums
 /// </remarks>
 public sealed record McpJsonDialect(McpJsonNaming Naming, McpJsonEnums Enums)
 {
+    /// <summary>
+    /// Treat an <c>object</c>-typed value as a boxed scalar that <c>McpJson.Scalar</c> can render.
+    /// </summary>
+    /// <remarks>
+    /// Off by default, and it must stay that way: System.Text.Json serialises <c>object</c> by its
+    /// runtime type, so a <c>List&lt;object&gt;</c> holding anonymous types writes real JSON objects
+    /// while Scalar would write their ToString. RedisMCPSharp has exactly that shape. Turn this on
+    /// only for a codebase where the boxed values are known to be database cells or similar, and
+    /// only after looking at the sites it unlocks.
+    /// </remarks>
+    public bool TrustBoxedScalars { get; init; }
+
     /// <summary>What fifteen of the sixteen servers use: names as written, enums as numbers.</summary>
     public static McpJsonDialect Default { get; } = new(McpJsonNaming.Verbatim, McpJsonEnums.Numeric);
 
