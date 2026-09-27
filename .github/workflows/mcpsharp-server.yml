@@ -153,7 +153,6 @@ jobs:
         run: >
           dotnet publish "${{ env.PROJECT_FILE }}"
           -c Release
-         
           -r ${{ matrix.runtime_id }}
           --self-contained ${{ matrix.self_contained }}
           -o "publish/${{ matrix.runtime_id }}-${{ matrix.package_type }}"
