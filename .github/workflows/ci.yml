@@ -26,6 +26,22 @@ jobs:
       - name: Restore
         run: dotnet restore DNAX.slnx
 
+      - name: Verify workflow files
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # A whitespace-only line inside a `run: >` folded block is not cosmetic: YAML folds it
+          # into a real newline, so the command splits and everything after it runs as a separate
+          # shell line. That shipped once - RedisMCPSharp v1.2.5 failed with "-r: command not
+          # found" after an edit left nine stray spaces behind. Nothing else in a workflow file
+          # needs a whitespace-only line, so rejecting all of them is the cheap, total fix.
+          if grep -rnE '^[[:space:]]+$' .github/workflows/; then
+            echo "::error::Whitespace-only line in a workflow file. Inside a 'run: >' block this splits the command." >&2
+            exit 1
+          fi
+          echo "No whitespace-only lines in .github/workflows/."
+
       - name: Verify formatting
         run: dotnet format DNAX.slnx --verify-no-changes --no-restore --verbosity minimal
 
