@@ -34,6 +34,32 @@ public sealed class McpJsonTests
     }
 
     [Fact]
+    public void AddNodeMutatesTheArrayRatherThanReturningALazySequence()
+    {
+        // This method was called Append, and JsonArray implements IEnumerable<JsonNode?>, so every
+        // call bound to LINQ's Enumerable.Append instead: no mutation, array stayed empty, and a
+        // scan loop guarded by Count never terminated. The assertion that matters is that the
+        // array itself changed.
+        JsonArray array = [];
+        array.AddNode(McpJson.Object().Set("a", 1)).AddNode(null).AddNode(JsonValue.Create("x"));
+
+        Assert.Equal(3, array.Count);
+        Assert.Equal("""[{"a":1},null,"x"]""", array.ToJsonString());
+    }
+
+    [Fact]
+    public void AddNodeIsNotShadowedByLinq()
+    {
+        // Guards the rename. If a future edit reintroduces an IEnumerable-shaped extension name,
+        // this fails rather than silently doing nothing.
+        JsonArray array = [];
+        JsonArray returned = array.AddNode(JsonValue.Create(1));
+
+        Assert.Same(array, returned);
+        Assert.Single(array);
+    }
+
+    [Fact]
     public void ArrayOmitsNothingSoFilteringIsTheCallersChoice()
     {
         JsonArray array = McpJson.Array(

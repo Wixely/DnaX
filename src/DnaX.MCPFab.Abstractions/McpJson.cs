@@ -94,6 +94,31 @@ public static class McpJson
         return array;
     }
 
+    /// <summary>Adds a node to an array and returns the array, for chaining.</summary>
+    /// <remarks>
+    /// <para>
+    /// Exists to avoid a trap. <c>JsonArray.Add</c> has both an <c>Add(JsonNode?)</c> overload and a
+    /// generic <c>Add&lt;T&gt;(T)</c>, and passing a <see cref="JsonObject"/> binds to the generic
+    /// one - which is <c>[RequiresUnreferencedCode]</c> and reintroduces IL2026 at a site that looks
+    /// entirely trim-safe. Taking <see cref="JsonNode"/> here makes the right overload the only one
+    /// reachable.
+    /// </para>
+    /// <para>
+    /// Named AddNode, not Append. <see cref="JsonArray"/> implements
+    /// <see cref="IEnumerable{T}"/> of <see cref="JsonNode"/>, so an extension called Append is
+    /// ambiguous with LINQ's <c>Enumerable.Append</c> - and LINQ wins, returning a lazy sequence
+    /// and mutating nothing. A first version of this method was called Append and was therefore a
+    /// silent no-op: an array stayed empty, and a loop guarded by its Count never terminated.
+    /// </para>
+    /// </remarks>
+    public static JsonArray AddNode(this JsonArray target, JsonNode? value)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+
+        target.Add(value);
+        return target;
+    }
+
     /// <summary>
     /// Projects a sequence of key/value pairs into a JSON object, as a dictionary serialises.
     /// </summary>
