@@ -38,7 +38,9 @@
 
     <!--
       An exemption is a permanent claim about a dependency, so it carries its
-      justification in the csproj next to the code, where it can be grepped and reviewed.
+      justification recorded with the server, where it can be grepped and reviewed. Note that
+      the policy itself is set by the release pipeline as a global property, not in the csproj -
+      see the comment in eng/mcpfab/Directory.Build.props for why.
     -->
     <Error Condition="'$(McpFabTrimPolicy)' == 'Exempt' AND '$(McpFabTrimExemptionReason)' == ''"
            Code="MCPFAB002"

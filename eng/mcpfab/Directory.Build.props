@@ -21,7 +21,14 @@
   </PropertyGroup>
 
   <!--
-    Trim analysis. Set McpFabTrimPolicy to Exempt in the csproj to opt a server out.
+    Trim analysis.
+
+    McpFabTrimPolicy must arrive as a GLOBAL MSBuild property, not a <PropertyGroup> entry in the
+    csproj. This file is imported before the csproj body, so a value set there is empty by the time
+    the conditions below are evaluated: the Trimmed block silently does nothing, while
+    DnaX.MCPFab.Build.targets is imported late enough to see it and fails with MCPFAB004. The
+    release pipeline passes -p:McpFabTrimPolicy=<policy> from its trim_policy input; to reproduce a
+    tier locally, pass the same flag (dotnet build -p:McpFabTrimPolicy=Trimmed).
 
     Analysed in both tiers, but only Trimmed is strict. A server mid-migration still has its
     anonymous-type serialization sites, and every one of them is an IL2026/IL3050 - so if

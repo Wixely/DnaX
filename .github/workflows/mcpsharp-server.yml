@@ -47,6 +47,15 @@ on:
         type: string
         required: false
         default: "Analyzed"
+      trim_mode:
+        description: >-
+          partial (default) or full, when trim_policy is Trimmed. partial trims only assemblies
+          marked IsTrimmable, which is the framework - the server's own code and its third-party
+          dependencies are left whole. full trims everything and is smaller, but every reflective
+          path in a dependency becomes a runtime failure rather than a warning.
+        type: string
+        required: false
+        default: "partial"
       dotnet_version:
         description: ".NET SDK version."
         type: string
@@ -133,8 +142,27 @@ jobs:
           set -euo pipefail
           # PublishTrimmed requires a self-contained publish, so the framework-dependent
           # legs are never trimmed regardless of policy.
+          #
+          # TrimMode is passed explicitly rather than left to default. Without it the SDK uses
+          # full trim, which was never verified against a real server: the only measurements
+          # behind this pipeline - 103 MB to 34 MB on RedisMCPSharp, 47 of 48 live tool calls
+          # identical in shape - were taken with TrimMode=partial. full reaches roughly 25 MB but
+          # also trims third-party assemblies, where a reflective path becomes a runtime failure
+          # instead of a build warning.
+          case "${{ inputs.trim_mode }}" in
+            partial|full) ;;
+            *) echo "trim_mode must be 'partial' or 'full', got '${{ inputs.trim_mode }}'" >&2; exit 1 ;;
+          esac
+
+          # The policy has to reach MSBuild as a GLOBAL property. Directory.Build.props is imported
+          # before the csproj body, so a <McpFabTrimPolicy> set in the csproj is invisible to the
+          # conditions that switch on it - IsTrimmable and the JSON reflection switch never apply,
+          # and DnaX.MCPFab.Build.targets (imported late, so it does see the csproj value) then
+          # fails the build with MCPFAB004. Passing -p: here makes both halves agree.
+          echo "POLICY_ARG=-p:McpFabTrimPolicy=${{ inputs.trim_policy }}" >> "$GITHUB_ENV"
+
           if [[ "${{ inputs.trim_policy }}" == "Trimmed" && "${{ matrix.self_contained }}" == "true" ]]; then
-            echo "TRIM_ARGS=-p:PublishTrimmed=true" >> "$GITHUB_ENV"
+            echo "TRIM_ARGS=-p:PublishTrimmed=true -p:TrimMode=${{ inputs.trim_mode }}" >> "$GITHUB_ENV"
           else
             echo "TRIM_ARGS=" >> "$GITHUB_ENV"
           fi
@@ -155,18 +183,19 @@ jobs:
           --configfile NuGet.config
 
       - name: Restore
-        run: dotnet restore "${{ env.SOLUTION_FILE }}"
+        run: dotnet restore "${{ env.SOLUTION_FILE }}" ${{ env.POLICY_ARG }}
 
       - name: Build
-        run: dotnet build "${{ env.SOLUTION_FILE }}" -c Release --no-restore
+        run: dotnet build "${{ env.SOLUTION_FILE }}" -c Release --no-restore ${{ env.POLICY_ARG }}
 
       - name: Test
-        run: dotnet test "${{ env.SOLUTION_FILE }}" -c Release --no-build --verbosity normal
+        run: dotnet test "${{ env.SOLUTION_FILE }}" -c Release --no-build --verbosity normal ${{ env.POLICY_ARG }}
 
       - name: Publish
         run: >
           dotnet publish "${{ env.PROJECT_FILE }}"
           -c Release
+          ${{ env.POLICY_ARG }}
           -r ${{ matrix.runtime_id }}
           --self-contained ${{ matrix.self_contained }}
           -o "publish/${{ matrix.runtime_id }}-${{ matrix.package_type }}"
