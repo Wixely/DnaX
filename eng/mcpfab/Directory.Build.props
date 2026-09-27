@@ -3,13 +3,52 @@
   <!--
     MCPFab server Directory.Build.props.
 
-    Copy this into an MCPSharp server repository root. These properties MUST live here
-    rather than in the DnaX.MCPFab.Build package: the .NET SDK reads them before NuGet
-    package props are imported, so a package that sets them has no effect at all - the
-    generated MSBuild editorconfig never receives build_property.EnableTrimAnalyzer and
-    the analyzer stays silent. DnaX.MCPFab.Build enforces that this block is present
-    (MCPFAB003 / MCPFAB004) rather than trying to substitute for it.
+    Copy this into an MCPSharp server repository root and set McpFabTrimPolicy below.
+
+    These properties MUST live here rather than in the DnaX.MCPFab.Build package: the .NET SDK
+    reads them before NuGet package props are imported, so a package that sets them has no effect
+    at all - the generated MSBuild editorconfig never receives build_property.EnableTrimAnalyzer
+    and the analyzer stays silent. DnaX.MCPFab.Build enforces that this block is present
+    (MCPFAB003) rather than trying to substitute for it.
   -->
+
+  <!--
+    ==========================================================================================
+    Trim policy. This is the one place a server declares it.
+    ==========================================================================================
+
+      McpFabTrimPolicy
+        Trimmed   Analysers on, and the self-contained publish is trimmed.
+        Analyzed  Analysers on, ships untrimmed. The staging state while migrating, and the
+                  right answer for a server whose payload sites are not all converted yet.
+        Exempt    Analysers off. Requires McpFabTrimExemptionReason. For a dependency that
+                  cannot be trimmed at all - RemoteAdminMCPSharp hosts PowerShell in-process,
+                  PlaywrightMCPSharp uses Roslyn scripting.
+
+      McpFabTrimMode (only read when the policy is Trimmed)
+        partial   Trims assemblies marked IsTrimmable, which in practice is the framework.
+                  This server's own code and its third-party dependencies are left whole.
+                  Measured on RedisMCPSharp: released executable 49.7 MB -> 19.2 MB, with all
+                  72 tools and 48 of 48 live tool calls byte-shape identical to untrimmed.
+        full      Trims everything, which is smaller again but reaches into third-party
+                  assemblies, where a reflective path becomes a runtime failure rather than a
+                  build warning. Not yet exercised against any server in this estate.
+
+    It is declared HERE, not in the csproj and not as a -p: flag, and that is load-bearing.
+    This file is imported before the csproj body, so a value set in the csproj is still empty
+    when the conditions below are evaluated: the Trimmed block silently does nothing while
+    DnaX.MCPFab.Build.targets, imported late enough to see it, fails the build. A -p: flag works
+    but only reaches the build that passes it - the Dockerfile runs its own dotnet publish inside
+    the image, so the container would quietly ship untrimmed while the release assets did not.
+    Declaring it here is the only form that every build path agrees on: local, Docker, and CI.
+
+    Because of that, the release pipeline needs to know nothing about trimming. PublishTrimmed
+    and TrimMode are set below rather than passed as workflow inputs.
+  -->
+  <PropertyGroup>
+    <McpFabTrimPolicy>Analyzed</McpFabTrimPolicy>
+    <McpFabTrimMode>partial</McpFabTrimMode>
+  </PropertyGroup>
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -21,21 +60,12 @@
   </PropertyGroup>
 
   <!--
-    Trim analysis.
-
-    McpFabTrimPolicy must arrive as a GLOBAL MSBuild property, not a <PropertyGroup> entry in the
-    csproj. This file is imported before the csproj body, so a value set there is empty by the time
-    the conditions below are evaluated: the Trimmed block silently does nothing, while
-    DnaX.MCPFab.Build.targets is imported late enough to see it and fails with MCPFAB004. The
-    release pipeline passes -p:McpFabTrimPolicy=<policy> from its trim_policy input; to reproduce a
-    tier locally, pass the same flag (dotnet build -p:McpFabTrimPolicy=Trimmed).
-
-    Analysed in both tiers, but only Trimmed is strict. A server mid-migration still has its
-    anonymous-type serialization sites, and every one of them is an IL2026/IL3050 - so if
+    Analysed in every tier but Exempt, and only Trimmed is strict. A server mid-migration still
+    has its anonymous-type serialization sites, and every one of them is an IL2026/IL3050 - so if
     Analyzed also promoted those to errors, no server could ever adopt the staging tier and the
-    migration would have to land in a single unreviewable change. Analyzed therefore reports
-    them as warnings: the count is visible, the build succeeds, and the sites can be migrated
-    incrementally. Flipping to Trimmed is what makes them errors.
+    migration would have to land in a single unreviewable change. Analyzed therefore reports them
+    as warnings: the count is visible, the build succeeds, and the sites can be migrated
+    incrementally.
   -->
   <PropertyGroup Condition="'$(McpFabTrimPolicy)' != 'Exempt'">
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
@@ -49,13 +79,29 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(McpFabTrimPolicy)' == 'Trimmed'">
-    <!-- IsTrimmable asserts the assembly IS trim-safe, and promotes trim warnings to errors. -->
     <IsTrimmable>true</IsTrimmable>
     <!--
-      Turns every remaining anonymous-type serialization site from a runtime {} into a
-      build-time failure, rather than a server that starts and returns empty payloads.
+      Turns every remaining anonymous-type serialization site from a runtime {} into a loud
+      failure, rather than a server that starts and returns empty payloads.
     -->
     <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+
+    <!--
+      PublishTrimmed requires a self-contained publish, so the framework-dependent legs opt out
+      on their own rather than needing the pipeline to reason about it.
+    -->
+    <PublishTrimmed Condition="'$(SelfContained)' == 'true'">true</PublishTrimmed>
+    <TrimMode Condition="'$(SelfContained)' == 'true'">$(McpFabTrimMode)</TrimMode>
+  </PropertyGroup>
+
+  <!--
+    What this file actually saw, so DnaX.MCPFab.Build.targets can tell the difference between a
+    policy declared here and one that arrived too late for the blocks above to act on. Without
+    it the only available diagnosis is "copy the block into Directory.Build.props", which is
+    wrong and misleading when the block is present and the csproj is what set the policy.
+  -->
+  <PropertyGroup>
+    <_McpFabPolicyObservedInProps>$(McpFabTrimPolicy)</_McpFabPolicyObservedInProps>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(McpFabTrimPolicy)' != 'Exempt'">

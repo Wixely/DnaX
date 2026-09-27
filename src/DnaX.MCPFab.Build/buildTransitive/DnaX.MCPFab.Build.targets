@@ -18,9 +18,13 @@
 
   <PropertyGroup>
     <!--
-      Trimmed  : analyzers on, publishes trimmed, trim smoke test required.
+      Trimmed  : analyzers on, publishes trimmed (McpFabTrimMode chooses partial or full).
       Analyzed : analyzers on, ships untrimmed. The staging state while migrating.
       Exempt   : analyzers off. Requires McpFabTrimExemptionReason.
+
+      Declared in the server's Directory.Build.props - see MCPFAB004 below for why nowhere else
+      works. The default here only applies to a project that has no MCPFab props block at all,
+      which MCPFAB003 rejects anyway.
     -->
     <McpFabTrimPolicy Condition="'$(McpFabTrimPolicy)' == ''">$(McpFabTrimPolicyDefault)</McpFabTrimPolicy>
     <McpFabTrimPolicy Condition="'$(McpFabTrimPolicy)' == ''">Analyzed</McpFabTrimPolicy>
@@ -37,10 +41,8 @@
            Text="McpFabTrimPolicy is '$(McpFabTrimPolicy)'. Valid values are Trimmed, Analyzed, or Exempt." />
 
     <!--
-      An exemption is a permanent claim about a dependency, so it carries its
-      justification recorded with the server, where it can be grepped and reviewed. Note that
-      the policy itself is set by the release pipeline as a global property, not in the csproj -
-      see the comment in eng/mcpfab/Directory.Build.props for why.
+      An exemption is a permanent claim about a dependency, so it carries its justification
+      recorded with the server, where it can be grepped and reviewed.
     -->
     <Error Condition="'$(McpFabTrimPolicy)' == 'Exempt' AND '$(McpFabTrimExemptionReason)' == ''"
            Code="MCPFAB002"
@@ -55,11 +57,32 @@
            Code="MCPFAB003"
            Text="McpFabTrimPolicy is '$(McpFabTrimPolicy)' but EnableTrimAnalyzer is not true, so no trim analysis is running. A NuGet package cannot set this for you - the SDK reads it before package props are imported. Copy the MCPFab block into this repository's Directory.Build.props (see eng/mcpfab/Directory.Build.props in the DnaX repository), or set McpFabTrimPolicy to Exempt with a reason." />
 
-    <!-- Only the Trimmed tier requires this: Analyzed is the staging state, where the
-         anonymous-type sites are still present and reported as warnings. -->
-    <Error Condition="'$(McpFabTrimPolicy)' == 'Trimmed' AND '$(JsonSerializerIsReflectionEnabledByDefault)' != 'false'"
+    <!--
+      The policy must be declared in Directory.Build.props, which is imported before the csproj
+      body. A value that appears later - in the csproj, or via -p: on a build that the props file
+      did not see - leaves the tier blocks unapplied while this file still reads the policy, so
+      the server claims a tier it is not being held to.
+
+      Comparing against what the props recorded is what makes the diagnosis accurate. The previous
+      check could only say "copy the block into Directory.Build.props", which is the wrong advice
+      in exactly the case that trips: the block is present, and the csproj is what set the policy.
+    -->
+    <Error Condition="'$(_McpFabPolicyObservedInProps)' != '' AND '$(McpFabTrimPolicy)' != '$(_McpFabPolicyObservedInProps)'"
            Code="MCPFAB004"
-           Text="McpFabTrimPolicy is '$(McpFabTrimPolicy)' but JsonSerializerIsReflectionEnabledByDefault is not false. Anonymous-type serialization would then fail silently as {} at runtime instead of erroring at build time. Copy the MCPFab block into this repository's Directory.Build.props." />
+           Text="McpFabTrimPolicy is '$(McpFabTrimPolicy)' here but Directory.Build.props saw '$(_McpFabPolicyObservedInProps)'. The policy was set after that file was imported - most likely in the csproj, or as a -p: flag - so the tier's properties (IsTrimmable, JsonSerializerIsReflectionEnabledByDefault, PublishTrimmed) were never applied. Declare it only in Directory.Build.props: every build path reads that, including the dotnet publish the Dockerfile runs inside the image." />
+
+    <!--
+      Belt and braces for the Trimmed tier. If the props file is an older copy without the
+      reflection switch, the server would publish trimmed and return {} from every converted
+      payload - the exact silent failure this policy exists to prevent.
+    -->
+    <Error Condition="'$(McpFabTrimPolicy)' == 'Trimmed' AND '$(JsonSerializerIsReflectionEnabledByDefault)' != 'false'"
+           Code="MCPFAB005"
+           Text="McpFabTrimPolicy is Trimmed but JsonSerializerIsReflectionEnabledByDefault is not false, so anonymous-type serialization would fail silently as {} at runtime rather than loudly. Update this repository's Directory.Build.props from eng/mcpfab/Directory.Build.props in the DnaX repository." />
+
+    <Error Condition="'$(McpFabTrimPolicy)' == 'Trimmed' AND '$(McpFabTrimMode)' != 'partial' AND '$(McpFabTrimMode)' != 'full'"
+           Code="MCPFAB006"
+           Text="McpFabTrimMode is '$(McpFabTrimMode)'. Valid values are partial (trims the framework only; the measured and verified option) and full (trims third-party assemblies too, which is smaller but turns a reflective path in a dependency into a runtime failure)." />
 
     <Message Condition="'$(McpFabTrimPolicy)' == 'Exempt'"
              Importance="high"
