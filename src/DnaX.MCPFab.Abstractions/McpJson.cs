@@ -57,7 +57,26 @@ public static class McpJson
     public static JsonObject Set(this JsonObject target, string name, JsonNode? value)
         => SetNode(target, name, value);
 
-    /// <summary>Projects a sequence into a JSON array, skipping elements that map to null.</summary>
+    /// <summary>Projects a sequence into a JSON array, one element in, one element out.</summary>
+    /// <remarks>
+    /// <para>
+    /// An element that maps to null is written as JSON <c>null</c>, it is not dropped. This method
+    /// originally skipped them, reasoning by analogy with <see cref="Set(JsonObject, string, string?)"/>
+    /// - but <c>JsonIgnoreCondition.WhenWritingNull</c> only ever omitted object <em>properties</em>,
+    /// never array elements, so skipping silently shortened arrays relative to the reflection-based
+    /// serialiser it replaces.
+    /// </para>
+    /// <para>
+    /// Position is load-bearing in this estate: <c>redis_mget</c> documents "parallel array, with
+    /// nulls for missing keys", and a caller zips it against the keys it asked for. Dropping one
+    /// null misaligns every pair after it, and the result is still a structurally valid array of
+    /// strings - which is why nothing would have noticed.
+    /// </para>
+    /// <para>
+    /// To omit elements, filter before projecting: <c>McpJson.Array(xs.Where(x => x is not null), …)</c>.
+    /// That says so at the call site instead of hiding it in here.
+    /// </para>
+    /// </remarks>
     public static JsonArray Array<T>(IEnumerable<T> source, Func<T, JsonNode?> map)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -66,13 +85,62 @@ public static class McpJson
         JsonArray array = [];
         foreach (T item in source)
         {
-            if (map(item) is { } node)
-            {
-                array.Add(node);
-            }
+            // Typed as JsonNode? so this binds to JsonArray.Add(JsonNode?) rather than the generic
+            // Add<T>, which is [RequiresUnreferencedCode] and would reintroduce a trim warning.
+            JsonNode? node = map(item);
+            array.Add(node);
         }
 
         return array;
+    }
+
+    /// <summary>Adds a node to an array and returns the array, for chaining.</summary>
+    /// <remarks>
+    /// <para>
+    /// Exists to avoid a trap. <c>JsonArray.Add</c> has both an <c>Add(JsonNode?)</c> overload and a
+    /// generic <c>Add&lt;T&gt;(T)</c>, and passing a <see cref="JsonObject"/> binds to the generic
+    /// one - which is <c>[RequiresUnreferencedCode]</c> and reintroduces IL2026 at a site that looks
+    /// entirely trim-safe. Taking <see cref="JsonNode"/> here makes the right overload the only one
+    /// reachable.
+    /// </para>
+    /// <para>
+    /// Named AddNode, not Append. <see cref="JsonArray"/> implements
+    /// <see cref="IEnumerable{T}"/> of <see cref="JsonNode"/>, so an extension called Append is
+    /// ambiguous with LINQ's <c>Enumerable.Append</c> - and LINQ wins, returning a lazy sequence
+    /// and mutating nothing. A first version of this method was called Append and was therefore a
+    /// silent no-op: an array stayed empty, and a loop guarded by its Count never terminated.
+    /// </para>
+    /// </remarks>
+    public static JsonArray AddNode(this JsonArray target, JsonNode? value)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+
+        target.Add(value);
+        return target;
+    }
+
+    /// <summary>
+    /// Projects a sequence of key/value pairs into a JSON object, as a dictionary serialises.
+    /// </summary>
+    /// <remarks>
+    /// <c>Dictionary&lt;string, T&gt;</c> writes as a JSON object, not an array of pairs, so a
+    /// rewrite that treated one as an ordinary sequence would change the payload's shape. Insertion
+    /// order is preserved, matching what the reflection-based serialiser produced.
+    /// </remarks>
+    public static JsonObject Map<T>(IEnumerable<KeyValuePair<string, T>> source, Func<T, JsonNode?> map)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(map);
+
+        JsonObject target = [];
+        foreach (KeyValuePair<string, T> pair in source)
+        {
+            // Unlike Set, a null value is written: a dictionary entry that exists with a null value
+            // is not the same as an absent key, and WhenWritingNull did not remove it.
+            target[pair.Key] = map(pair.Value);
+        }
+
+        return target;
     }
 
     /// <summary>
