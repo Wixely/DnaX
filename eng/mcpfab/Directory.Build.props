@@ -34,16 +34,25 @@
                   assemblies, where a reflective path becomes a runtime failure rather than a
                   build warning. Not yet exercised against any server in this estate.
 
-    It is declared HERE, not in the csproj and not as a -p: flag, and that is load-bearing.
-    This file is imported before the csproj body, so a value set in the csproj is still empty
-    when the conditions below are evaluated: the Trimmed block silently does nothing while
-    DnaX.MCPFab.Build.targets, imported late enough to see it, fails the build. A -p: flag works
-    but only reaches the build that passes it - the Dockerfile runs its own dotnet publish inside
-    the image, so the container would quietly ship untrimmed while the release assets did not.
-    Declaring it here is the only form that every build path agrees on: local, Docker, and CI.
+    It is declared HERE, not in the csproj, and that is load-bearing. This file is imported
+    before the csproj body, so a value set in the csproj is still empty when the conditions below
+    are evaluated: the Trimmed block silently does nothing while DnaX.MCPFab.Build.targets,
+    imported late enough to see it, fails the build. That is not hypothetical - it failed
+    RedisMCPSharp v1.2.4's Docker job, because the Dockerfile runs its own dotnet publish with no
+    global property to match.
+
+    A -p: flag does work, because global properties are set before evaluation. Declaring it here
+    is preferred for two plainer reasons: a local `dotnet build` then reproduces exactly what CI
+    produces, and the policy is stated once in the repository rather than duplicated into a
+    workflow file that can drift from it.
 
     Because of that, the release pipeline needs to know nothing about trimming. PublishTrimmed
     and TrimMode are set below rather than passed as workflow inputs.
+
+    Note what this does NOT change: the container. The Dockerfile publishes framework-dependent
+    onto the aspnet runtime base image, and PublishTrimmed requires a self-contained publish, so
+    the SelfContained condition below correctly declines to set it. The image is the same size it
+    always was - that is right, not a gap. Only the self-contained release assets are trimmed.
   -->
   <PropertyGroup>
     <McpFabTrimPolicy>Analyzed</McpFabTrimPolicy>

@@ -18,9 +18,10 @@ name: MCPFab server release
 #         packages: write
 #
 # Trimming is deliberately not an input here. A server declares McpFabTrimPolicy and
-# McpFabTrimMode in its own Directory.Build.props, which is the only place every build path
-# reads - including the dotnet publish the Dockerfile runs inside the image. Passing it as a
-# workflow input meant the container could ship untrimmed while the release assets did not.
+# McpFabTrimMode in its own Directory.Build.props, so the policy is stated once in the repository
+# and a local build reproduces what this pipeline produces. Only the self-contained legs are
+# trimmed; PublishTrimmed requires a self-contained publish, so the framework-dependent legs and
+# the Docker image (which publishes framework-dependent) opt out on their own.
 
 on:
   workflow_call:
