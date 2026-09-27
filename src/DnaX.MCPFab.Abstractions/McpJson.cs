@@ -57,7 +57,26 @@ public static class McpJson
     public static JsonObject Set(this JsonObject target, string name, JsonNode? value)
         => SetNode(target, name, value);
 
-    /// <summary>Projects a sequence into a JSON array, skipping elements that map to null.</summary>
+    /// <summary>Projects a sequence into a JSON array, one element in, one element out.</summary>
+    /// <remarks>
+    /// <para>
+    /// An element that maps to null is written as JSON <c>null</c>, it is not dropped. This method
+    /// originally skipped them, reasoning by analogy with <see cref="Set(JsonObject, string, string?)"/>
+    /// - but <c>JsonIgnoreCondition.WhenWritingNull</c> only ever omitted object <em>properties</em>,
+    /// never array elements, so skipping silently shortened arrays relative to the reflection-based
+    /// serialiser it replaces.
+    /// </para>
+    /// <para>
+    /// Position is load-bearing in this estate: <c>redis_mget</c> documents "parallel array, with
+    /// nulls for missing keys", and a caller zips it against the keys it asked for. Dropping one
+    /// null misaligns every pair after it, and the result is still a structurally valid array of
+    /// strings - which is why nothing would have noticed.
+    /// </para>
+    /// <para>
+    /// To omit elements, filter before projecting: <c>McpJson.Array(xs.Where(x => x is not null), …)</c>.
+    /// That says so at the call site instead of hiding it in here.
+    /// </para>
+    /// </remarks>
     public static JsonArray Array<T>(IEnumerable<T> source, Func<T, JsonNode?> map)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -66,10 +85,10 @@ public static class McpJson
         JsonArray array = [];
         foreach (T item in source)
         {
-            if (map(item) is { } node)
-            {
-                array.Add(node);
-            }
+            // Typed as JsonNode? so this binds to JsonArray.Add(JsonNode?) rather than the generic
+            // Add<T>, which is [RequiresUnreferencedCode] and would reintroduce a trim warning.
+            JsonNode? node = map(item);
+            array.Add(node);
         }
 
         return array;

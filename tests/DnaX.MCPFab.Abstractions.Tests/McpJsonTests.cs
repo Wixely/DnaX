@@ -19,13 +19,27 @@ public sealed class McpJsonTests
     }
 
     [Fact]
-    public void ArrayProjectsAndSkipsNullMappings()
+    public void ArrayKeepsNullMappingsInPositionRatherThanDroppingThem()
     {
+        // This asserted the opposite until a before-and-after comparison against the reflection
+        // serialiser showed ["a",null,"c"] coming back as ["a","c"]. WhenWritingNull omits object
+        // properties, never array elements, and redis_mget's contract is a parallel array whose
+        // positions line up with the keys asked for.
         JsonArray array = McpJson.Array(
             new[] { "a", "", "b" },
             value => string.IsNullOrEmpty(value) ? null : McpJson.Object().Set("v", value));
 
-        Assert.Equal(2, array.Count);
+        Assert.Equal(3, array.Count);
+        Assert.Equal("""[{"v":"a"},null,{"v":"b"}]""", array.ToJsonString());
+    }
+
+    [Fact]
+    public void ArrayOmitsNothingSoFilteringIsTheCallersChoice()
+    {
+        JsonArray array = McpJson.Array(
+            new[] { "a", "", "b" }.Where(value => !string.IsNullOrEmpty(value)),
+            value => McpJson.Object().Set("v", value));
+
         Assert.Equal("""[{"v":"a"},{"v":"b"}]""", array.ToJsonString());
     }
 

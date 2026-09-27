@@ -361,6 +361,36 @@ public sealed class McpJsonEquivalenceTests
     }
 
     [Fact]
+    public void ANullElementStaysInPlaceRatherThanShorteningTheArray()
+    {
+        // redis_mget documents "parallel array, with nulls for missing keys" - a caller zips it
+        // against the keys it asked for. Dropping a null would silently misalign every pair after
+        // it, and the array would still look structurally identical.
+        string json = Run("""
+                    return JsonSerializer.Serialize(new { values = Values }, Options);
+            """,
+            """
+                public static readonly List<string?> Values = ["a", null, "c"];
+            """);
+
+        Assert.Equal("""{"values":["a",null,"c"]}""", json);
+    }
+
+    [Fact]
+    public void ANullProjectedElementAlsoStaysInPlace()
+    {
+        string json = Run("""
+                    return JsonSerializer.Serialize(
+                        new { values = Values.Select(v => v is null ? null : v.ToUpperInvariant()) }, Options);
+            """,
+            """
+                public static readonly List<string?> Values = ["a", null, "c"];
+            """);
+
+        Assert.Equal("""{"values":["A",null,"C"]}""", json);
+    }
+
+    [Fact]
     public void AJsonNodeMemberIsNotDoubleEncoded()
     {
         string json = Run("""
