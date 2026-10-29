@@ -2,6 +2,12 @@
   <PropertyGroup>
     <PackageId>DnaX.RemoteAccess</PackageId>
     <Description>Deployment-gated API remote access, rotatable credentials and routes, and redacted auditing for ASP.NET Core 10.</Description>
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <!-- Interceptor-based; replaces reflection binding the trimmer cannot follow. -->
+    <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

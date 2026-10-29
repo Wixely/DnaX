@@ -2,6 +2,12 @@
   <PropertyGroup>
     <PackageId>DnaX.Diagnostics</PackageId>
     <Description>Secure, host-integrated diagnostics endpoints for ASP.NET Core 10.</Description>
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <!-- Interceptor-based; builds the minimal-API request delegates at compile time so they survive NativeAOT. -->
+    <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
