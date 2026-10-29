@@ -1,5 +1,6 @@
 namespace DnaX.Diagnostics;
 
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 public sealed record DnaXLiveResponse(string Status);
@@ -34,5 +35,15 @@ public sealed record DnaXThreadPoolInfo(
 
 [JsonSerializable(typeof(DnaXHealthResponse))]
 internal sealed partial class DnaXDiagnosticsJsonContext : JsonSerializerContext
+{
+}
+
+// Web defaults (camelCase) match what TypedResults.Ok produced through ASP.NET Core's
+// JsonOptions, so these payloads keep their wire format while no longer depending on
+// the host's resolver.
+[JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
+[JsonSerializable(typeof(DnaXLiveResponse))]
+[JsonSerializable(typeof(DnaXRuntimeInfo))]
+internal sealed partial class DnaXDiagnosticsWebJsonContext : JsonSerializerContext
 {
 }
