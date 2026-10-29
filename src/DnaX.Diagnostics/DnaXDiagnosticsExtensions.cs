@@ -58,7 +58,14 @@ public static class DnaXDiagnosticsExtensions
             }
         }
 
-        group.MapGet("/live", static () => TypedResults.Ok(new DnaXLiveResponse("Healthy")))
+        // Serialize through the library's own source-generated context, not the host's
+        // JsonOptions resolver: under NativeAOT the host cannot know these types.
+        group.MapGet(
+                "/live",
+                static () => TypedResults.Json(
+                    new DnaXLiveResponse("Healthy"),
+                    DnaXDiagnosticsWebJsonContext.Default.DnaXLiveResponse))
+            .Produces<DnaXLiveResponse>()
             .WithName("DnaXLiveness");
 
         group.MapGet(
@@ -90,7 +97,10 @@ public static class DnaXDiagnosticsExtensions
             group.MapGet(
                     "/info",
                     (IHostEnvironment environment, EndpointDataSource endpointDataSource) =>
-                        TypedResults.Ok(CreateRuntimeInfo(environment, endpointDataSource, options.IncludeRoutes)))
+                        TypedResults.Json(
+                            CreateRuntimeInfo(environment, endpointDataSource, options.IncludeRoutes),
+                            DnaXDiagnosticsWebJsonContext.Default.DnaXRuntimeInfo))
+                .Produces<DnaXRuntimeInfo>()
                 .WithName("DnaXRuntimeInfo");
         }
 
